@@ -18,7 +18,7 @@ declare namespace React {
   export type JSXElementConstructor<P> = (props: P) => ReactElement<any, any> | null;
   export type ReactPortal = ReactElement;
 
-  export type FC<P = {}> = (props: P & { children?: ReactNode }) => ReactElement<any, any> | null;
+  export type FC<P = {}> = (props: P & { children?: ReactNode; key?: any }) => ReactElement<any, any> | null;
   export type FunctionComponent<P = {}> = FC<P>;
 
   export type PropsWithChildren<P = unknown> = P & { children?: ReactNode | undefined };
@@ -73,6 +73,7 @@ declare namespace React {
     key: string;
     ctrlKey: boolean;
     metaKey: boolean;
+    shiftKey?: boolean;
     preventDefault: () => void;
   }
 
@@ -231,7 +232,16 @@ declare module "lucide-react" {
   export const Gauge: Icon;
   export const Link2: Icon;
   export const GitFork: Icon;
+  export const History: Icon;
+  export const BookOpen: Icon;
+  export const Copy: Icon;
+  export const RotateCcw: Icon;
+  export const XCircle: Icon;
+  export const Trash2: Icon;
+  export const Printer: Icon;
+  export const Calendar: Icon;
 }
+
 
 
 declare module "next" {

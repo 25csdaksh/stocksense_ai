@@ -482,6 +482,7 @@ export interface PortfolioSummaryResponse {
 }
 
 export interface AgentQueryResponse {
+  session_id?: string;
   query: string;
   intent: string;
   ticker_focus?: string | null;
@@ -493,34 +494,78 @@ export interface AgentQueryResponse {
   guardrail_passed?: boolean;
 }
 
-// AI & RAG Research Types
-export interface CitationSource {
-  id: number;
+
+export interface CitationItem {
+  id: string;
   ticker: string;
-  company: string;
-  document_type: string;
-  fiscal_year: string | number;
+  title: string;
+  filing_type: string;
+  fiscal_year: number | string;
   section: string;
-  filing_date?: string;
-  excerpt: string;
+  page_number?: number;
+  content_snippet: string;
   relevance_score?: number;
+  relevance?: number;
+  date?: string;
+  source?: string;
 }
 
-export interface AIResearchResponse {
+export interface DocumentSearchRequest {
   query: string;
-  intent: string;
-  entities: string[];
-  execution_plan: string[];
-  tools_called: string[];
-  structured_response: {
-    data_summary: string;
-    analysis: string;
-    assumptions: string;
-    uncertainty_and_risks: string;
-    sources: CitationSource[];
-  };
-  markdown_answer: string;
-  disclaimer: string;
-  latency_ms: number;
-  timestamp: string;
+  ticker?: string;
+  doc_type?: string;
+  top_k?: number;
 }
+
+export interface DocumentSearchResponse {
+  query: string;
+  total_results: number;
+  citations: CitationItem[];
+  synthesis_summary: string;
+}
+
+export type ResearchMode =
+  | "ALL"
+  | "GENERAL"
+  | "COMPANY"
+  | "TECHNICAL"
+  | "FUNDAMENTAL"
+  | "RISK"
+  | "ANOMALY"
+  | "NEWS"
+  | "FILINGS";
+
+export interface ResearchMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+  ticker?: string | null;
+  mode?: ResearchMode;
+  agentResponse?: AgentQueryResponse;
+  citations?: CitationItem[];
+  thoughtSteps?: Array<{ step: number; agent: string; message: string }>;
+  isStreaming?: boolean;
+}
+
+export interface ResearchSession {
+  id: string;
+  title: string;
+  ticker?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  messages: ResearchMessage[];
+  lastQuery: string;
+}
+
+export type PipelineNodeStatus = "pending" | "running" | "completed" | "warning" | "failed";
+
+export interface PipelineNode {
+  id: string;
+  name: string;
+  agent: string;
+  description: string;
+  status: PipelineNodeStatus;
+  detail?: string;
+}
+

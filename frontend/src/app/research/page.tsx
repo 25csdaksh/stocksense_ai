@@ -1,157 +1,225 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/common/Card";
-import { Button } from "@/components/common/Button";
-import { Badge } from "@/components/common/Badge";
-import { Brain, Sparkles, Send, FileText, Database, ShieldAlert, CheckCircle2 } from "lucide-react";
+import { useResearch } from "@/hooks/useResearch";
+import { useResearchHistory } from "@/hooks/useResearchHistory";
+import {
+  ResearchHeader,
+  ResearchComposer,
+  ResearchExecution,
+  ResearchResult,
+  ResearchEvidencePanel,
+  ResearchContextPanel,
+  ResearchHistory,
+  ResearchReportView,
+  ResearchLoadingState,
+} from "@/components/research";
+import { CitationItem, ResearchSession } from "@/types";
+import { Tabs } from "@/components/common/Tabs";
+import { Brain, History, BookOpen, Layers, ShieldAlert } from "lucide-react";
 
 export default function ResearchPage() {
-  const [query, setQuery] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
+  const searchParams = useSearchParams();
+  const urlTicker = searchParams.get("ticker") || null;
+  const urlQuery = searchParams.get("q") || "";
 
-  const sampleQueries = [
-    "Compare TCS.NS and INFY.NS fundamentals with 10-K regulatory risk factors",
-    "Analyze NVIDIA 10-K risk factors and realized volatility",
-    "Simulate 2020 COVID macro shock on RELIANCE.NS stock price",
+  const {
+    selectedTicker,
+    setSelectedTicker,
+    mode,
+    setMode,
+    messages,
+    pipelineNodes,
+    citations,
+    contextFlags,
+    isProcessing,
+    isReportMode,
+    setIsReportMode,
+    error,
+    executeResearch,
+    loadSession,
+    resetSession,
+  } = useResearch(urlTicker);
+
+  const {
+    sessions,
+    activeSessionId,
+    setActiveSessionId,
+    saveSession,
+    deleteSession,
+    clearHistory,
+  } = useResearchHistory();
+
+  const [selectedCitation, setSelectedCitation] = useState<CitationItem | null>(null);
+  const [mobileTab, setMobileTab] = useState<"research" | "history" | "evidence">("research");
+
+  // Handle URL query preload
+  useEffect(() => {
+    if (urlQuery && messages.length === 0) {
+      executeResearch(urlQuery, urlTicker || undefined);
+    }
+  }, [urlQuery, urlTicker, executeResearch, messages.length]);
+
+  // Handle saving completed research into session history
+  useEffect(() => {
+    if (messages.length > 0 && !isProcessing) {
+      const lastUser = [...messages].reverse().find((m) => m.role === "user");
+      const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+      if (lastUser && lastAssistant) {
+        const sessionTitle =
+          lastUser.content.length > 45 ? `${lastUser.content.slice(0, 45)}...` : lastUser.content;
+        const newSession: ResearchSession = {
+          id: `sess_${Date.now()}`,
+          title: sessionTitle,
+          ticker: selectedTicker,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          messages,
+          lastQuery: lastUser.content,
+        };
+        saveSession(newSession);
+      }
+    }
+  }, [messages, isProcessing, saveSession, selectedTicker]);
+
+  const handleSelectSessionFromHistory = (session: ResearchSession) => {
+    setActiveSessionId(session.id);
+    loadSession(session);
+    setMobileTab("research");
+  };
+
+  const handleStartNewSession = () => {
+    resetSession();
+    setSelectedTicker(null);
+    setMobileTab("research");
+  };
+
+  // Get the most recent assistant message
+  const latestAssistantMessage = [...messages].reverse().find((m) => m.role === "assistant");
+
+  const mobileTabs = [
+    { id: "research", label: "Research Terminal", icon: <Brain className="w-4 h-4" /> },
+    { id: "evidence", label: `Evidence (${citations.length})`, icon: <BookOpen className="w-4 h-4" /> },
+    { id: "history", label: `History (${sessions.length})`, icon: <History className="w-4 h-4" /> },
   ];
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-tight text-content">AI Research Terminal</h1>
-              <Badge variant="gold" size="md">
-                LangGraph Multi-Agent
-              </Badge>
-            </div>
-            <p className="text-xs text-content-muted mt-0.5">
-              Autonomous financial synthesis across live market data, SEC 10-K filings, and ML analytics.
-            </p>
-          </div>
+      <div className="space-y-6 pb-12">
+        {/* Terminal Header */}
+        <ResearchHeader
+          selectedTicker={selectedTicker}
+          onSelectTicker={setSelectedTicker}
+          mode={mode}
+          onSelectMode={setMode}
+          isReportMode={isReportMode}
+          onToggleReportMode={() => setIsReportMode(!isReportMode)}
+          onResetSession={handleStartNewSession}
+        />
+
+        {/* Mobile View Switcher Tabs (Visible on < 1024px) */}
+        <div className="block lg:hidden">
+          <Tabs
+            tabs={mobileTabs}
+            activeTab={mobileTab}
+            onChange={(tabId) => setMobileTab(tabId as "research" | "history" | "evidence")}
+          />
         </div>
 
-        {/* Query Input Box */}
-        <Card className="border-primary/30 shadow-card">
-          <CardContent className="p-4 space-y-3">
-            <div className="relative">
-              <textarea
-                rows={3}
-                placeholder="Ask any institutional research inquiry (e.g. 'Evaluate TCS.NS valuation multiples vs sector average and retrieve SEC 10-K risk disclosures')..."
-                value={query}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setQuery(e.target.value)}
-                className="w-full rounded-xl border border-border bg-surface-subtle/50 p-3.5 text-sm text-content placeholder:text-content-muted/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none transition-all"
+        {/* Formal Report View Mode */}
+        {isReportMode && latestAssistantMessage ? (
+          <ResearchReportView
+            message={latestAssistantMessage}
+            onClose={() => setIsReportMode(false)}
+          />
+        ) : (
+          /* Institutional 3-Column Workstation Grid */
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Left Column: Research History (3 Cols on Desktop) */}
+            <div
+              className={`lg:col-span-3 space-y-6 ${
+                mobileTab !== "history" ? "hidden lg:block" : "block"
+              }`}
+            >
+              <ResearchHistory
+                sessions={sessions}
+                activeSessionId={activeSessionId}
+                onSelectSession={handleSelectSessionFromHistory}
+                onNewSession={handleStartNewSession}
+                onClearHistory={clearHistory}
               />
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[11px] font-semibold text-content-muted">Sample prompts:</span>
-                {sampleQueries.map((sq, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setQuery(sq)}
-                    className="text-[11px] px-2 py-0.5 rounded-md bg-surface-subtle border border-border text-content-muted hover:text-primary hover:border-primary/30 transition-colors truncate max-w-xs"
-                  >
-                    {sq}
-                  </button>
+            {/* Center Column: Query Composer, Pipeline DAG & Results (6 Cols on Desktop) */}
+            <div
+              className={`lg:col-span-6 space-y-6 ${
+                mobileTab !== "research" ? "hidden lg:block" : "block"
+              }`}
+            >
+              {/* Research Composer Box */}
+              <ResearchComposer
+                selectedTicker={selectedTicker}
+                onSelectTicker={setSelectedTicker}
+                onSubmit={(q) => executeResearch(q)}
+                isProcessing={isProcessing}
+                initialQuery={urlQuery}
+              />
+
+              {/* Multi-Agent Pipeline Visualization */}
+              <ResearchExecution nodes={pipelineNodes} isProcessing={isProcessing} />
+
+              {/* Loading State Animation */}
+              {isProcessing && (
+                <ResearchLoadingState
+                  query={messages[messages.length - 1]?.content}
+                  ticker={selectedTicker}
+                />
+              )}
+
+              {/* Error Message */}
+              {error && (
+                <div className="p-4 rounded-xl bg-financial-loss-bg border border-financial-loss/30 text-xs text-financial-loss flex items-start gap-2.5">
+                  <ShieldAlert className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <p>{error}</p>
+                </div>
+              )}
+
+              {/* Research Results Stream */}
+              {messages
+                .filter((m) => m.role === "assistant")
+                .map((msg) => (
+                  <ResearchResult
+                    key={msg.id}
+                    message={msg}
+                    onOpenReportMode={() => setIsReportMode(true)}
+                    onSelectCitation={(cite) => {
+                      setSelectedCitation(cite);
+                      setMobileTab("evidence");
+                    }}
+                  />
                 ))}
-              </div>
-
-              <Button
-                variant="primary"
-                size="md"
-                isLoading={isProcessing}
-                onClick={() => setIsProcessing(true)}
-                rightIcon={<Send className="w-4 h-4" />}
-              >
-                Synthesize
-              </Button>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Structured Research Response Sections Placeholder */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main 2 Cols: Research Output */}
-          <div className="lg:col-span-2 space-y-4">
-            <Card>
-              <CardHeader className="border-b border-border">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Brain className="w-4 h-4 text-primary" />
-                    <CardTitle className="text-sm">Structured Research Findings</CardTitle>
-                  </div>
-                  <Badge variant="primary" size="sm">
-                    Grounded Synthesis
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6 space-y-6">
-                {/* Data Summary */}
-                <div className="space-y-1.5">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
-                    <Database className="w-3.5 h-3.5 text-primary" />
-                    1. Concrete Market Data
-                  </h4>
-                  <p className="text-xs text-content-muted leading-relaxed">
-                    Quantitative inputs, spot quotes in INR/USD, 24-hour volume changes, and valuation multiples.
-                  </p>
-                </div>
+            {/* Right Column: Context Checklist & RAG Evidence Panel (3 Cols on Desktop) */}
+            <div
+              className={`lg:col-span-3 space-y-6 ${
+                mobileTab !== "evidence" ? "hidden lg:block" : "block"
+              }`}
+            >
+              {/* Research Context Transparent Checklist */}
+              <ResearchContextPanel contextFlags={contextFlags} />
 
-                {/* Analysis */}
-                <div className="space-y-1.5">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-secondary" />
-                    2. Institutional Analysis
-                  </h4>
-                  <p className="text-xs text-content-muted leading-relaxed">
-                    Statistical findings, Fama-French 5-Factor Stock DNA deciles, and comparative margin health.
-                  </p>
-                </div>
-
-                {/* Assumptions & Uncertainty */}
-                <div className="space-y-1.5">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-accent flex items-center gap-1.5">
-                    <ShieldAlert className="w-3.5 h-3.5 text-accent" />
-                    3. Assumptions & Uncertainties
-                  </h4>
-                  <p className="text-xs text-content-muted leading-relaxed">
-                    Methodological constraints, volatility boundaries, and non-deterministic assumptions.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+              {/* RAG Evidence Inspector */}
+              <ResearchEvidencePanel
+                citations={citations}
+                selectedCitation={selectedCitation}
+                onSelectCitation={setSelectedCitation}
+              />
+            </div>
           </div>
-
-          {/* Right Col: RAG Citations Inspector */}
-          <div className="space-y-4">
-            <Card>
-              <CardHeader className="border-b border-border">
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-primary" />
-                  <CardTitle className="text-sm">Verified Document Citations</CardTitle>
-                </div>
-                <CardDescription>SEC 10-K & Annual Report Extracts</CardDescription>
-              </CardHeader>
-              <CardContent className="p-4 space-y-3">
-                <div className="p-3 rounded-xl bg-surface-subtle border border-border text-xs space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <Badge variant="primary" size="sm">[Source 1]</Badge>
-                    <span className="text-[10px] text-content-muted">FY2025 • Item 1A</span>
-                  </div>
-                  <p className="text-[11px] text-content-muted leading-relaxed line-clamp-3">
-                    Regulatory risks, competition, and macroeconomic dependency disclosures indexed from official regulatory filings.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+        )}
       </div>
     </AppLayout>
   );
