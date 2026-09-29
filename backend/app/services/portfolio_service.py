@@ -1,20 +1,22 @@
 """
 Portfolio Risk Analytics, Transaction Ingestion & Watchlist Service.
-Utilizes an isolated In-Memory Repository interface ready for PostgreSQL/TimescaleDB swap.
+Utilizes PostgreSQL/TimescaleDB Repositories with transparent fallback.
 """
 from typing import Dict, Any, List, Optional
 from datetime import datetime
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.providers.market_data.factory import get_market_data_provider
 from app.analytics.scenario import HistoricalStressTester
 from app.utils.constants import SUPPORTED_UNIVERSE
 from app.utils.validators import validate_ticker
+from app.db.repositories.portfolio_repository import PortfolioRepository
+from app.db.repositories.watchlist_repository import WatchlistRepository
 
 
 class InMemoryPortfolioRepository:
-    """Mock repository for user holdings and watchlist entries."""
+    """Mock repository for user holdings and watchlist entries (fallback)."""
 
     def __init__(self):
-        # Default mock holdings for development
         self._positions: Dict[str, Dict[str, Any]] = {
             "AAPL": {"ticker": "AAPL", "shares": 50.0, "avg_cost": 175.0, "sector": "Information Technology", "beta": 1.15},
             "NVDA": {"ticker": "NVDA", "shares": 25.0, "avg_cost": 420.0, "sector": "Information Technology", "beta": 1.75},
@@ -80,12 +82,38 @@ class InMemoryPortfolioRepository:
 class PortfolioService:
 
     def __init__(self):
-        self.repo = InMemoryPortfolioRepository()
+        self.in_memory_repo = InMemoryPortfolioRepository()
         self.market_provider = get_market_data_provider()
         self.stress_tester = HistoricalStressTester()
 
-    async def get_portfolio_summary(self) -> Dict[str, Any]:
-        raw_positions = self.repo.get_positions()
+    async def get_portfolio_summary(
+        self,
+        db: Optional[AsyncSession] = None,
+        user_id: str = "usr_dev_admin_001"
+    ) -> Dict[str, Any]:
+        raw_positions = []
+        if db:
+            try:
+                repo = PortfolioRepository(db)
+                port = await repo.get_or_create_default(user_id)
+                db_positions = await repo.get_positions(port.id)
+                if db_positions:
+                    raw_positions = [
+                        {
+                            "ticker": p.ticker,
+                            "shares": p.shares,
+                            "avg_cost": p.avg_cost,
+                            "sector": p.sector,
+                            "beta": p.beta
+                        }
+                        for p in db_positions
+                    ]
+            except Exception:
+                raw_positions = []
+
+        if not raw_positions:
+            raw_positions = self.in_memory_repo.get_positions()
+
         enriched_positions = []
         total_value = 0.0
         weighted_beta_sum = 0.0
@@ -112,7 +140,6 @@ class PortfolioService:
             w = (p["market_value"] / total_value) if total_value > 0 else 0.0
             weighted_beta_sum += w * p["beta"]
 
-        # Parametric portfolio daily VaR (95% confidence ~ 1.65 * daily_sigma * beta)
         daily_var_95 = round(1.65 * 0.015 * weighted_beta_sum * 100.0, 2)
 
         return {
@@ -123,9 +150,37 @@ class PortfolioService:
             "positions": enriched_positions
         }
 
-    async def add_transaction(self, ticker: str, shares: float, price: float, tx_type: str = "BUY") -> Dict[str, Any]:
+    async def add_transaction(
+        self,
+        ticker: str,
+        shares: float,
+        price: float,
+        tx_type: str = "BUY",
+        db: Optional[AsyncSession] = None,
+        user_id: str = "usr_dev_admin_001"
+    ) -> Dict[str, Any]:
         sym = validate_ticker(ticker)
-        return self.repo.add_transaction(sym, shares, price, tx_type)
+        res = None
+        if db:
+            try:
+                repo = PortfolioRepository(db)
+                port = await repo.get_or_create_default(user_id)
+                meta = SUPPORTED_UNIVERSE.get(sym, {})
+                res = await repo.add_transaction(
+                    portfolio_id=port.id,
+                    ticker=sym,
+                    shares=shares,
+                    price=price,
+                    tx_type=tx_type,
+                    sector=meta.get("sector", "Information Technology"),
+                    beta=meta.get("beta", 1.0)
+                )
+            except Exception:
+                res = None
+
+        # Always sync with in-memory store
+        in_mem_res = self.in_memory_repo.add_transaction(sym, shares, price, tx_type)
+        return res or in_mem_res
 
     async def stress_test_portfolio(self, holdings: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
         if holdings is None or len(holdings) == 0:
@@ -166,8 +221,32 @@ class PortfolioService:
         }
 
     # Watchlist methods
-    async def get_watchlist(self) -> List[Dict[str, Any]]:
-        raw = self.repo.get_watchlist()
+    async def get_watchlist(
+        self,
+        db: Optional[AsyncSession] = None,
+        user_id: str = "usr_dev_admin_001"
+    ) -> List[Dict[str, Any]]:
+        raw = []
+        if db:
+            try:
+                repo = WatchlistRepository(db)
+                db_items = await repo.get_by_user(user_id)
+                if db_items:
+                    raw = [
+                        {
+                            "ticker": w.ticker,
+                            "added_at": w.added_at.isoformat(),
+                            "target_price": w.target_price,
+                            "notes": w.notes
+                        }
+                        for w in db_items
+                    ]
+            except Exception:
+                raw = []
+
+        if not raw:
+            raw = self.in_memory_repo.get_watchlist()
+
         enriched = []
         for w in raw:
             sym = w["ticker"]
@@ -179,12 +258,46 @@ class PortfolioService:
             })
         return enriched
 
-    async def add_to_watchlist(self, ticker: str, target_price: Optional[float] = None, notes: Optional[str] = None) -> Dict[str, Any]:
+    async def add_to_watchlist(
+        self,
+        ticker: str,
+        target_price: Optional[float] = None,
+        notes: Optional[str] = None,
+        db: Optional[AsyncSession] = None,
+        user_id: str = "usr_dev_admin_001"
+    ) -> Dict[str, Any]:
         sym = validate_ticker(ticker)
-        return self.repo.add_to_watchlist(sym, target_price, notes)
+        if db:
+            try:
+                repo = WatchlistRepository(db)
+                w = await repo.add_item(user_id, sym, target_price, notes)
+                return {
+                    "ticker": w.ticker,
+                    "added_at": w.added_at.isoformat(),
+                    "target_price": w.target_price,
+                    "notes": w.notes
+                }
+            except Exception:
+                pass
+        return self.in_memory_repo.add_to_watchlist(sym, target_price, notes)
 
-    async def remove_from_watchlist(self, ticker: str) -> bool:
-        return self.repo.remove_from_watchlist(ticker)
+    async def remove_from_watchlist(
+        self,
+        ticker: str,
+        db: Optional[AsyncSession] = None,
+        user_id: str = "usr_dev_admin_001"
+    ) -> bool:
+        sym = validate_ticker(ticker)
+        if db:
+            try:
+                repo = WatchlistRepository(db)
+                removed = await repo.remove_item(user_id, sym)
+                if removed:
+                    self.in_memory_repo.remove_from_watchlist(sym)
+                    return True
+            except Exception:
+                pass
+        return self.in_memory_repo.remove_from_watchlist(sym)
 
 
 portfolio_service = PortfolioService()

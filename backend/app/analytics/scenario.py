@@ -20,8 +20,15 @@ class MonteCarloSimulator:
         iterations: int = 5000,
         jump_intensity: float = 0.05,
         jump_mean: float = -0.05,
-        jump_std: float = 0.15
+        jump_std: float = 0.15,
+        drift: Optional[float] = None,
+        volatility: Optional[float] = None
     ) -> Dict[str, Any]:
+        if drift is not None:
+            drift_annualized = drift
+        if volatility is not None:
+            volatility_annualized = volatility
+
         np.random.seed(self.random_seed)
         dt = 1.0 / 252.0
         steps = days

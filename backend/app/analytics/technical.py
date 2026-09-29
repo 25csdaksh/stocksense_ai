@@ -131,3 +131,45 @@ def compute_all_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
     out["realized_vol_20d"] = calculate_realized_volatility(c, 20).round(2)
 
     return out
+
+
+class TechnicalAnalyzer:
+    """Calculates full technical indicator suite for OHLCV bars."""
+
+    @staticmethod
+    def calculate_all(bars: list, ticker: str = "ASSET") -> dict:
+        if not bars:
+            return {"ticker": ticker, "technical_bias": "NEUTRAL"}
+        df = pd.DataFrame(bars)
+        df = compute_all_technical_indicators(df)
+        latest = df.iloc[-1]
+        c = float(latest["close"])
+        s20 = float(latest.get("sma_20", c))
+        s50 = float(latest.get("sma_50", c))
+        rsi = float(latest.get("rsi_14", 50.0))
+        if c > s20 > s50 and rsi > 50:
+            bias = "BULLISH"
+        elif c < s20 < s50 and rsi < 50:
+            bias = "BEARISH"
+        else:
+            bias = "NEUTRAL"
+        return {
+            "ticker": ticker,
+            "sma_20": round(s20, 2),
+            "sma_50": round(s50, 2),
+            "ema_20": round(float(latest.get("ema_20", c)), 2),
+            "rsi_14": round(rsi, 2),
+            "macd": {
+                "macd": round(float(latest.get("macd_line", 0)), 2),
+                "signal": round(float(latest.get("macd_signal", 0)), 2),
+                "histogram": round(float(latest.get("macd_hist", 0)), 2)
+            },
+            "bollinger_bands": {
+                "upper": round(float(latest.get("bb_upper", c * 1.05)), 2),
+                "middle": round(float(latest.get("bb_middle", c)), 2),
+                "lower": round(float(latest.get("bb_lower", c * 0.95)), 2)
+            },
+            "atr_14": round(float(latest.get("atr_14", 2.0)), 2),
+            "realized_volatility_20d_pct": round(float(latest.get("realized_vol_20d", 20.0)), 2),
+            "technical_bias": bias
+        }

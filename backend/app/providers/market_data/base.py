@@ -21,3 +21,6 @@ class MarketDataProvider(ABC):
     async def get_indices(self) -> List[Dict[str, Any]]:
         """Fetches major index benchmarks."""
         pass
+
+
+BaseMarketDataProvider = MarketDataProvider

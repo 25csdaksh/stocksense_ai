@@ -2,7 +2,7 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-# Install system dependencies (including build tools for scientific packages if needed)
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
@@ -11,19 +11,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install python dependencies
 COPY backend/requirements.txt backend/
-COPY ml-engine/requirements.txt ml-engine/
 
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r backend/requirements.txt && \
-    pip install --no-cache-dir -r ml-engine/requirements.txt
+    pip install --no-cache-dir -r backend/requirements.txt
 
-# Copy backend and ml-engine source code
+# Copy backend source code
 COPY backend/ backend/
-COPY ml-engine/ ml-engine/
-COPY data/ data/
 
 WORKDIR /app/backend
 
 EXPOSE 8000
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+HEALTHCHECK --interval=15s --timeout=5s --retries=3 \
+  CMD curl -f http://localhost:8000/api/v1/health || exit 1
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

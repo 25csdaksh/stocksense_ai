@@ -189,3 +189,12 @@ class MarketRelationshipGraph:
                 "correlation_threshold_applied": self.threshold
             }
         }
+
+
+class CorrelationEngine:
+    """Convenience wrapper for calculating cross-asset rolling correlations."""
+
+    @staticmethod
+    async def compute_matrix(method: str = "pearson") -> Dict[str, Any]:
+        from app.services.analytics_service import analytics_service
+        return await analytics_service.get_correlation_matrix(method=method)

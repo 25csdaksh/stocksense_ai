@@ -33,6 +33,13 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
 
+    # Database & TimescaleDB
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/marketmind_db"
+    TEST_DATABASE_URL: str = "sqlite+aiosqlite:///:memory:"
+    DB_POOL_SIZE: int = 10
+    DB_MAX_OVERFLOW: int = 20
+    DB_ECHO: bool = False
+
     # AI & Multi-Agent Keys
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-1.5-pro"
@@ -53,6 +60,7 @@ class Settings(BaseSettings):
     QDRANT_HOST: str = "localhost"
     QDRANT_PORT: int = 6333
     QDRANT_API_KEY: str = ""
+    QDRANT_COLLECTION_NAME: str = "marketmind_sec_10k"
 
     @property
     def CORS_ORIGINS(self) -> List[str]:

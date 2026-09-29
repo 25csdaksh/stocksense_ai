@@ -92,6 +92,20 @@ class MarketAnomalyDetector:
 
         return anomalies
 
+    def analyze_ticker(self, ticker: str, bars: list) -> Dict[str, Any]:
+        """Convenience method to detect anomalies from a list of OHLCV bars."""
+        if not bars:
+            return {"ticker": ticker, "anomalies_detected": 0, "active_anomalies": [], "volatility_regime": "NORMAL", "stress_score": 0.10}
+        df = pd.DataFrame(bars)
+        anomalies = self.detect_anomalies(df, ticker=ticker)
+        return {
+            "ticker": ticker,
+            "anomalies_detected": len(anomalies),
+            "active_anomalies": anomalies,
+            "volatility_regime": "NORMAL" if len(anomalies) < 3 else "ELEVATED",
+            "stress_score": round(min(1.0, len(anomalies) * 0.15), 2)
+        }
+
 
 class GARCHVolatilityModel:
     """

@@ -20,6 +20,10 @@ class EmbeddingModel:
             vec = vec / norm
         return vec.tolist()
 
+    def embed_query(self, query: str) -> List[float]:
+        """Alias for embedding a single search query."""
+        return self.embed_text(query)
+
     def embed_documents(self, docs: List[str]) -> List[List[float]]:
         return [self.embed_text(d) for d in docs]
 
