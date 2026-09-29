@@ -464,6 +464,61 @@ export interface PortfolioHolding {
   unrealized_pnl: number;
   unrealized_pnl_pct: number;
   weight_pct: number;
+  company_name?: string;
+  sector?: string;
+  beta?: number;
+  daily_change?: number;
+  daily_change_pct?: number;
+}
+
+export interface PortfolioTransaction {
+  id: string;
+  ticker: string;
+  company_name?: string;
+  transaction_type: "BUY" | "SELL" | "DIVIDEND" | "OTHER";
+  shares: number;
+  price: number;
+  fees?: number;
+  total_value: number;
+  executed_at: string;
+  notes?: string;
+}
+
+export interface PortfolioRiskMetrics {
+  portfolio_beta?: number;
+  daily_var_95?: number;
+  daily_var_95_pct?: number;
+  sharpe_ratio?: number;
+  sortino_ratio?: number;
+  annualized_volatility_pct?: number;
+  max_drawdown_pct?: number;
+  downside_deviation_pct?: number;
+  tracking_error_pct?: number;
+  alpha_pct?: number;
+}
+
+export interface ConcentrationMetrics {
+  top_1_weight_pct: number;
+  top_1_ticker: string;
+  top_3_weight_pct: number;
+  top_5_weight_pct: number;
+  largest_sector_weight_pct: number;
+  largest_sector_name: string;
+  hhi_index: number;
+}
+
+export interface PortfolioStressTestCrisis {
+  crisis_name: string;
+  period: string;
+  projected_portfolio_loss_dollars: number;
+  projected_drawdown_pct: number;
+  stressed_portfolio_value: number;
+  description: string;
+}
+
+export interface PortfolioStressTestResponse {
+  initial_portfolio_value: number;
+  crises_stress_results: Record<string, PortfolioStressTestCrisis>;
 }
 
 export interface PortfolioSummaryResponse {
@@ -473,12 +528,22 @@ export interface PortfolioSummaryResponse {
   total_unrealized_pnl_pct: number;
   daily_pnl: number;
   daily_pnl_pct: number;
+  cash_balance?: number;
+  weighted_beta?: number;
+  daily_var_95_pct?: number;
+  positions_count?: number;
+  positions?: Array<{
+    ticker: string;
+    shares: number;
+    price: number;
+    market_value: number;
+    avg_cost: number;
+    unrealized_pnl_pct: number;
+    sector: string;
+    beta: number;
+  }>;
   holdings: PortfolioHolding[];
-  risk_metrics?: {
-    portfolio_beta?: number;
-    daily_var_95?: number;
-    sharpe_ratio?: number;
-  };
+  risk_metrics?: PortfolioRiskMetrics;
 }
 
 export interface AgentQueryResponse {
