@@ -62,9 +62,11 @@ export interface Stock {
 
 export interface StockQuote {
   ticker: string;
+  name?: string;
   price: number;
   change: number;
-  change_percent: number;
+  change_percent?: number;
+  change_pct?: number;
   open: number;
   high: number;
   low: number;
@@ -75,10 +77,12 @@ export interface StockQuote {
   pe_ratio?: number | null;
   week_52_high?: number;
   week_52_low?: number;
-  currency: Currency;
-  timestamp: string;
+  currency?: Currency;
+  timestamp?: string;
   is_demo?: boolean;
+  is_synthetic?: boolean;
 }
+
 
 export interface OHLCV {
   timestamp: string;
@@ -161,15 +165,25 @@ export interface FundamentalsData {
 // News & Sentiment Types
 export interface NewsArticle {
   id: string;
+  ticker?: string;
   title: string;
   summary: string;
   source: string;
-  url: string;
+  url?: string;
   published_at: string;
   sentiment_score: number; // -1.0 to 1.0
-  sentiment_label: 'POSITIVE' | 'NEUTRAL' | 'NEGATIVE';
-  related_tickers: string[];
+  sentiment_label: 'POSITIVE' | 'NEUTRAL' | 'NEGATIVE' | 'BULLISH' | 'BEARISH';
+  related_tickers?: string[];
+  impact_score?: number;
 }
+
+export interface NewsSentimentSummary {
+  ticker: string;
+  overall_sentiment: string;
+  average_sentiment_score: number;
+  news_items: NewsArticle[];
+}
+
 
 // Anomaly Detection Types
 export type AnomalySeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
@@ -195,53 +209,121 @@ export interface AnomalyItem {
 // Technical Analysis Types
 export interface TechnicalIndicators {
   ticker: string;
-  timestamp: string;
-  rsi_14: number;
-  macd: {
-    macd_line: number;
-    signal_line: number;
-    histogram: number;
-  };
   sma_20: number;
   sma_50: number;
-  sma_200: number;
   ema_20: number;
+  rsi_14: number;
+  macd: {
+    macd?: number;
+    signal?: number;
+    histogram?: number;
+    macd_line?: number;
+    signal_line?: number;
+  };
   bollinger_bands: {
     upper: number;
     middle: number;
     lower: number;
-    bandwidth: number;
+    bandwidth?: number;
   };
   atr_14: number;
-  realized_volatility: number;
-  signals: {
-    trend: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
-    rsi_state: 'OVERBOUGHT' | 'OVERSOLD' | 'NEUTRAL';
-    overall: 'BUY' | 'HOLD' | 'SELL';
-  };
+  realized_volatility_20d_pct: number;
+  technical_bias: "BULLISH" | "BEARISH" | "NEUTRAL" | string;
 }
 
+export type TechnicalAnalyticsResponse = TechnicalIndicators;
+
 // Correlation & Stock DNA Types
-export interface CorrelationMatrix {
-  tickers: string[];
-  matrix: number[][]; // 2D array of correlation coefficients
-  period: string;
-  central_hubs?: string[];
+export interface CorrelationPair {
+  asset_a: string;
+  asset_b: string;
+  correlation: number;
+}
+
+export interface CorrelationMatrixResponse {
+  assets: string[];
+  matrix: number[][];
+  method: string;
+  top_pairs: CorrelationPair[];
+  observations?: number;
+}
+
+export interface StockDNARadarItem {
+  factor: string;
+  score: number;
+  fullMark?: number;
+}
+
+export interface StockDNAResponse {
+  ticker: string;
+  factor_scores: Record<string, number>;
+  radar_data: StockDNARadarItem[];
+  dominant_persona: string;
+  summary: string;
 }
 
 export interface StockDNA {
   ticker: string;
-  name: string;
+  name?: string;
   factors: {
     value: number;       // 0-100
     growth: number;      // 0-100
     quality: number;     // 0-100
     momentum: number;    // 0-100
-    volatility: number;  // 0-100 (lower score = lower volatility)
+    volatility: number;  // 0-100
   };
-  composite_score: number;
-  factor_deciles: Record<string, number>;
-  style_box: string;
+  composite_score?: number;
+  factor_deciles?: Record<string, number>;
+  style_box?: string;
+}
+
+export interface FundamentalValuation {
+  pe_ratio?: number | null;
+  forward_pe?: number | null;
+  pb_ratio?: number | null;
+  ev_ebitda?: number | null;
+  fcf_yield_pct?: number | null;
+}
+
+export interface FundamentalProfitability {
+  gross_margin_pct?: number | null;
+  operating_margin_pct?: number | null;
+  net_margin_pct?: number | null;
+  roe_pct?: number | null;
+  roa_pct?: number | null;
+}
+
+export interface FundamentalHealth {
+  current_ratio?: number | null;
+  debt_to_equity?: number | null;
+  interest_coverage_ratio?: number | null;
+  altman_z_score?: number | null;
+  health_score?: string;
+}
+
+export interface FundamentalOverviewResponse {
+  ticker: string;
+  name: string;
+  sector: string;
+  valuation: FundamentalValuation;
+  profitability: FundamentalProfitability;
+  financial_health: FundamentalHealth;
+}
+
+export interface TickerAnomalyResponse {
+  ticker: string;
+  anomalies: AnomalyItem[];
+  volatility_regime?: {
+    current_volatility_pct?: number;
+    garch_forecast_5d?: number[];
+    volatility_regime?: string;
+    long_term_mean_vol_pct?: number;
+  };
+  volume_spike?: {
+    is_spike?: boolean;
+    volume_ratio?: number;
+    z_score?: number;
+  };
 }
 
 // Scenario Simulation Types

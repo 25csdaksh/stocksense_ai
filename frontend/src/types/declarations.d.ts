@@ -33,7 +33,7 @@ declare namespace React {
   export function useCallback<T extends (...args: any[]) => any>(callback: T, deps: readonly any[]): T;
   export function useMemo<T>(factory: () => T, deps: readonly any[] | undefined): T;
   export function useRef<T>(initialValue: T): { current: T };
-  export function useRef<T = undefined>(initialValue?: T): { current: T };
+  export function useRef<T = undefined>(initialValue?: T | null): { current: T | null };
   export function useContext<T>(context: Context<T>): T;
 
   export function forwardRef<T, P = {}>(
@@ -170,6 +170,7 @@ declare module "lucide-react" {
   export type Icon = React.FC<LucideProps>;
   export const LayoutDashboard: Icon;
   export const BarChart2: Icon;
+  export const BarChart3: Icon;
   export const TrendingUp: Icon;
   export const TrendingDown: Icon;
   export const Brain: Icon;
@@ -177,11 +178,14 @@ declare module "lucide-react" {
   export const Activity: Icon;
   export const Briefcase: Icon;
   export const Bookmark: Icon;
+  export const BookmarkCheck: Icon;
   export const Newspaper: Icon;
   export const Settings: Icon;
   export const Sparkles: Icon;
   export const Zap: Icon;
   export const ArrowRight: Icon;
+  export const ArrowLeft: Icon;
+  export const ArrowRightLeft: Icon;
   export const ArrowUpRight: Icon;
   export const Search: Icon;
   export const Menu: Icon;
@@ -195,6 +199,9 @@ declare module "lucide-react" {
   export const Layers: Icon;
   export const AlertCircle: Icon;
   export const CheckCircle2: Icon;
+  export const Check: Icon;
+  export const Clock: Icon;
+  export const Building2: Icon;
   export const Info: Icon;
   export const Send: Icon;
   export const Database: Icon;
@@ -215,9 +222,17 @@ declare module "lucide-react" {
   export const Shield: Icon;
   export const PieChart: Icon;
   export const Sliders: Icon;
+  export const SlidersHorizontal: Icon;
+  export const Eye: Icon;
   export const Share2: Icon;
   export const Network: Icon;
+  export const DollarSign: Icon;
+  export const Percent: Icon;
+  export const Gauge: Icon;
+  export const Link2: Icon;
+  export const GitFork: Icon;
 }
+
 
 declare module "next" {
   export interface Metadata {

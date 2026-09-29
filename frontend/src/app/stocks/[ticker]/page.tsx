@@ -1,179 +1,204 @@
 "use client";
 
-import React, { useState } from "react";
-import { useParams } from "next/navigation";
-import { AppLayout } from "@/components/layout/AppLayout";
-import { StatCard } from "@/components/common/StatCard";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/common/Card";
-import { Tabs } from "@/components/common/Tabs";
-import { Badge } from "@/components/common/Badge";
-import { Button } from "@/components/common/Button";
-import { TrendingUp, Brain, Activity, FileText, Bookmark, Sparkles } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { useStockQuote } from "@/hooks/useStockQuote";
+import {
+  StockHeader,
+  StockPriceSummary,
+  StockChartSection,
+  TechnicalIntelligence,
+  FundamentalIntelligence,
+  StockDNASection,
+  RiskIntelligence,
+  AnomalyIntelligence,
+  CorrelationIntelligence,
+  AIResearchPanel,
+  StockResearchActions,
+  StockNewsSection,
+  StockCompareModal,
+} from "@/components/stocks";
+import { Card, CardContent } from "@/components/common/Card";
+import { Button } from "@/components/common/Button";
+import { ArrowLeft, AlertCircle, Sparkles } from "lucide-react";
 
 export default function StockDetailPage() {
   const params = useParams();
-  const ticker = typeof params.ticker === "string" ? decodeURIComponent(params.ticker) : "RELIANCE.NS";
-  const [activeTab, setActiveTab] = useState("overview");
+  const router = useRouter();
+
+  // Safely decode and normalize ticker parameter
+  const rawTicker = typeof params?.ticker === "string" ? params.ticker : "RELIANCE.NS";
+  const ticker = decodeURIComponent(rawTicker).toUpperCase();
+
+  const { quote, isInWatchlist, isLoading, isError, error, isDemo, toggleWatchlist } =
+    useStockQuote(ticker);
+
+  const [compareModalOpen, setCompareModalOpen] = useState(false);
+  const [selectedAIPrompt, setSelectedAIPrompt] = useState<string>("");
+
+  const aiPanelRef = useRef<HTMLDivElement>(null);
 
   const isIndian = ticker.endsWith(".NS") || ticker.endsWith(".BO") || ticker.startsWith("^");
-  const isDemo = !isIndian;
   const currency = isIndian ? "INR" : "USD";
 
-  const tabs = [
-    { id: "overview", label: "Overview & Price Action", icon: <TrendingUp className="w-4 h-4" /> },
-    { id: "technicals", label: "Technical Indicators", icon: <Activity className="w-4 h-4" /> },
-    { id: "fundamentals", label: "Valuation & Margins", icon: <FileText className="w-4 h-4" /> },
-    { id: "dna", label: "5-Factor Stock DNA", icon: <Brain className="w-4 h-4" /> },
-  ];
+  // Dispatch prompt directly to AI research panel and smoothly scroll into view
+  const handleTriggerAIResearch = (customPrompt?: string) => {
+    const promptToUse =
+      customPrompt || `Analyze ${ticker} using available market, technical, fundamental, and news data.`;
+    setSelectedAIPrompt(promptToUse);
+    if (aiPanelRef.current) {
+      aiPanelRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  // If ticker is completely invalid or not found
+  if (isError && !quote) {
+    return (
+      <AppLayout>
+        <div className="max-w-4xl mx-auto py-12 px-4 text-center space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-financial-loss-bg text-financial-loss flex items-center justify-center mx-auto">
+            <AlertCircle className="w-8 h-8" />
+          </div>
+          <h1 className="text-2xl font-bold text-content">Stock Not Found</h1>
+          <p className="text-sm text-content-muted max-w-md mx-auto">
+            Unable to locate quote and analytics for ticker symbol &quot;{ticker}&quot;. Please verify the symbol or explore the stock universe.
+          </p>
+          <div className="pt-2">
+            <Link href="/stocks">
+              <Button variant="primary" size="md" leftIcon={<ArrowLeft className="w-4 h-4" />}>
+                Return to Stock Universe
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        {/* Instrument Title Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-surface border border-border">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-xl bg-primary text-accent font-extrabold text-lg flex items-center justify-center">
-              {ticker.substring(0, 2).toUpperCase()}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold tracking-tight text-content">{ticker}</h1>
-                {isDemo ? (
-                  <Badge variant="gold" size="md">
-                    DEMO DATA
-                  </Badge>
-                ) : (
-                  <Badge variant="primary" size="md">
-                    NSE / BSE LIVE
-                  </Badge>
-                )}
-              </div>
-              <p className="text-xs text-content-muted mt-0.5">
-                Market Instrument Deep-Dive • Currency: {currency}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Link href={`/research?q=Analyze ${encodeURIComponent(ticker)} with 10-K`}>
-              <Button variant="gold" size="sm" leftIcon={<Sparkles className="w-4 h-4" />}>
-                Run AI Analysis
-              </Button>
-            </Link>
-            <Button variant="outline" size="sm" leftIcon={<Bookmark className="w-4 h-4" />}>
-              Add to Watchlist
-            </Button>
-          </div>
+      <div className="space-y-6 pb-12">
+        {/* Navigation Breadcrumb */}
+        <div className="flex items-center gap-2 text-xs font-semibold text-content-muted">
+          <Link href="/dashboard" className="hover:text-primary transition-colors">
+            Dashboard
+          </Link>
+          <span>/</span>
+          <Link href="/stocks" className="hover:text-primary transition-colors">
+            Stock Universe
+          </Link>
+          <span>/</span>
+          <span className="text-content font-bold">{ticker}</span>
         </div>
 
-        {/* Snapshot Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            label="Spot Price"
-            value={currency === "INR" ? "₹2,950.40" : "$195.20"}
-            change={1.25}
-            changeLabel="vs previous close"
-            isDemo={isDemo}
-          />
-          <StatCard
-            label="52-Week Range"
-            value={currency === "INR" ? "₹2,200 — ₹3,025" : "$140 — $205"}
-            changeLabel="Historical boundary"
-            isDemo={isDemo}
-          />
-          <StatCard
-            label="P/E Multiple"
-            value="26.4x"
-            changeLabel="Trailing Twelve Months"
-            isDemo={isDemo}
-          />
-          <StatCard
-            label="RSI (14-Day)"
-            value="58.2"
-            changeLabel="Neutral Zone (30–70)"
+        {/* Section A: Stock Identity & Market Header */}
+        <StockHeader
+          ticker={ticker}
+          name={(quote as any)?.name}
+          exchange={isIndian ? "NSE" : "NASDAQ"}
+          sector={isIndian ? "Indian Capital Markets" : "US Equities"}
+          quote={quote}
+          isInWatchlist={isInWatchlist}
+          onToggleWatchlist={toggleWatchlist}
+          onOpenAIResearch={handleTriggerAIResearch}
+          onOpenCompare={() => setCompareModalOpen(true)}
+          isDemo={isDemo}
+        />
+
+        {/* Section B: Price Intelligence Summary Card */}
+        <StockPriceSummary
+          quote={quote}
+          currency={currency}
+          isLoading={isLoading}
+          isDemo={isDemo}
+        />
+
+        {/* Section K / Quick Actions: AI Research Dispatchers */}
+        <StockResearchActions
+          ticker={ticker}
+          onSelectAction={handleTriggerAIResearch}
+          onOpenCompare={() => setCompareModalOpen(true)}
+        />
+
+        {/* Section C: Interactive OHLCV Candlestick & Volume Chart */}
+        <StockChartSection
+          ticker={ticker}
+          currency={currency}
+          isDemo={isDemo}
+        />
+
+        {/* Section J: Ask MarketMind AI Research Panel */}
+        <div ref={aiPanelRef}>
+          <AIResearchPanel
+            ticker={ticker}
+            initialQuery={selectedAIPrompt}
             isDemo={isDemo}
           />
         </div>
 
-        {/* Tabs Bar */}
-        <Card>
-          <div className="px-5 pt-3">
-            <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
-          </div>
+        {/* Quantitative Grid: Technical & Fundamental Intelligence */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          {/* Section D: Technical Intelligence */}
+          <TechnicalIntelligence
+            ticker={ticker}
+            currency={currency}
+            isDemo={isDemo}
+          />
 
-          <CardContent className="pt-5">
-            {activeTab === "overview" && (
-              <div className="space-y-4">
-                <p className="text-xs text-content-muted">
-                  Interactive candlestick & volume charting engine powered by Lightweight Charts.
-                </p>
-                <div className="h-72 rounded-xl bg-surface-subtle/70 border border-dashed border-border flex items-center justify-center text-xs text-content-muted">
-                  Interactive Lightweight Candlestick + Volume Chart Component Shell
-                </div>
-              </div>
-            )}
+          {/* Section E: Fundamental Intelligence */}
+          <FundamentalIntelligence
+            ticker={ticker}
+            isDemo={isDemo}
+          />
+        </div>
 
-            {activeTab === "technicals" && (
-              <div className="space-y-4">
-                <p className="text-xs text-content-muted">
-                  Deterministic technical indicators calculated via NumPy & Pandas: SMA-20/50/200, MACD, Bollinger Bands, ATR.
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="p-3 bg-surface-subtle rounded-lg border border-border">
-                    <span className="text-[11px] text-content-muted font-semibold">MACD Signal</span>
-                    <p className="text-sm font-bold text-financial-gain mt-1">Bullish Cross (+1.45)</p>
-                  </div>
-                  <div className="p-3 bg-surface-subtle rounded-lg border border-border">
-                    <span className="text-[11px] text-content-muted font-semibold">Bollinger %B</span>
-                    <p className="text-sm font-bold text-content mt-1">0.68 (Normal Range)</p>
-                  </div>
-                  <div className="p-3 bg-surface-subtle rounded-lg border border-border">
-                    <span className="text-[11px] text-content-muted font-semibold">Realized Vol (30d)</span>
-                    <p className="text-sm font-bold text-content mt-1">16.8% Ann.</p>
-                  </div>
-                </div>
-              </div>
-            )}
+        {/* Factor Profile & Risk Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          {/* Section F: 5-Factor Stock DNA Profile */}
+          <StockDNASection
+            ticker={ticker}
+            isDemo={isDemo}
+          />
 
-            {activeTab === "fundamentals" && (
-              <div className="space-y-4">
-                <p className="text-xs text-content-muted">
-                  Institutional valuation multiples, profitability margins, and financial health scores.
-                </p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="p-3 bg-surface-subtle rounded-lg border border-border">
-                    <span className="text-[11px] text-content-muted font-semibold">P/B Ratio</span>
-                    <p className="text-sm font-bold text-content mt-1">3.8x</p>
-                  </div>
-                  <div className="p-3 bg-surface-subtle rounded-lg border border-border">
-                    <span className="text-[11px] text-content-muted font-semibold">EV / EBITDA</span>
-                    <p className="text-sm font-bold text-content mt-1">14.2x</p>
-                  </div>
-                  <div className="p-3 bg-surface-subtle rounded-lg border border-border">
-                    <span className="text-[11px] text-content-muted font-semibold">Operating Margin</span>
-                    <p className="text-sm font-bold text-financial-gain mt-1">21.4%</p>
-                  </div>
-                  <div className="p-3 bg-surface-subtle rounded-lg border border-border">
-                    <span className="text-[11px] text-content-muted font-semibold">ROE</span>
-                    <p className="text-sm font-bold text-financial-gain mt-1">18.6%</p>
-                  </div>
-                </div>
-              </div>
-            )}
+          {/* Section G: Risk & Volatility Intelligence */}
+          <RiskIntelligence
+            ticker={ticker}
+            currency={currency}
+            isDemo={isDemo}
+          />
+        </div>
 
-            {activeTab === "dna" && (
-              <div className="space-y-4">
-                <p className="text-xs text-content-muted">
-                  Fama-French inspired 5-Factor scoring (Value, Growth, Quality, Momentum, Low Volatility).
-                </p>
-                <div className="h-64 rounded-xl bg-surface-subtle/70 border border-dashed border-border flex items-center justify-center text-xs text-content-muted">
-                  5-Factor Stock DNA Radar Chart Visualization Shell
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Flow & Macro Grid: Anomalies & Cross-Asset Correlation */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          {/* Section H: Anomaly & Flow Intelligence */}
+          <AnomalyIntelligence
+            ticker={ticker}
+            currency={currency}
+            isDemo={isDemo}
+          />
+
+          {/* Section I: Cross-Asset Correlation Intelligence */}
+          <CorrelationIntelligence
+            ticker={ticker}
+            isDemo={isDemo}
+          />
+        </div>
+
+        {/* Section L: Key Verified News & Real-Time Sentiment */}
+        <StockNewsSection
+          ticker={ticker}
+          isDemo={isDemo}
+        />
+
+        {/* Stock Comparison Modal / Dialog */}
+        <StockCompareModal
+          isOpen={compareModalOpen}
+          onClose={() => setCompareModalOpen(false)}
+          baseTicker={ticker}
+          onCompareWithAI={handleTriggerAIResearch}
+        />
       </div>
     </AppLayout>
   );
