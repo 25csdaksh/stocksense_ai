@@ -169,6 +169,7 @@ declare module "lucide-react" {
   }
   export type Icon = React.FC<LucideProps>;
   export const LayoutDashboard: Icon;
+  export const BarChart2: Icon;
   export const TrendingUp: Icon;
   export const TrendingDown: Icon;
   export const Brain: Icon;

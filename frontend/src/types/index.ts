@@ -176,16 +176,20 @@ export type AnomalySeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 export type AnomalyType = 'PRICE_SPIKE' | 'VOLUME_SURGE' | 'VOLATILITY_BURST' | 'CORRELATION_BREAK' | 'MULTIVARIATE_ISOLATION';
 
 export interface AnomalyItem {
-  id: string;
+  id?: string;
   ticker: string;
   timestamp: string;
-  anomaly_type: AnomalyType;
-  severity: AnomalySeverity;
-  score: number; // -1 to 1 or anomaly metric
-  price_at_detection: number;
+  anomaly_type: AnomalyType | string;
+  severity?: AnomalySeverity;
+  severity_score: number;
+  isolation_score?: number | null;
+  score?: number;
+  price_at_detection?: number;
   z_score?: number;
-  supporting_metrics: Record<string, number | string>;
-  description: string;
+  summary: string;
+  metrics: Record<string, any>;
+  supporting_metrics?: Record<string, number | string>;
+  description?: string;
 }
 
 // Technical Analysis Types
@@ -335,6 +339,76 @@ export interface WatchlistItem {
   change_percent: number;
   currency: Currency;
   added_at: string;
+}
+
+// Sector Performance Types
+export interface SectorItem {
+  sector: string;
+  performance_pct: number;
+  momentum_score: number;
+  top_stock: string;
+  market_cap_weight: number;
+}
+
+export interface MarketIndexItem {
+  symbol: string;
+  name: string;
+  price: number;
+  change: number;
+  change_pct: number;
+}
+
+export interface MarketOverviewResponse {
+  indices: MarketIndexItem[];
+  top_gainers?: any[];
+  top_losers?: any[];
+  market_regime: string;
+  timestamp: string;
+}
+
+export interface AnomalyStreamResponse {
+  anomalies: AnomalyItem[];
+  total_active: number;
+  systemic_stress_index: number;
+  timestamp: string;
+}
+
+export interface PortfolioHolding {
+  ticker: string;
+  shares: number;
+  avg_price: number;
+  current_price: number;
+  market_value: number;
+  unrealized_pnl: number;
+  unrealized_pnl_pct: number;
+  weight_pct: number;
+}
+
+export interface PortfolioSummaryResponse {
+  total_value: number;
+  total_cost: number;
+  total_unrealized_pnl: number;
+  total_unrealized_pnl_pct: number;
+  daily_pnl: number;
+  daily_pnl_pct: number;
+  holdings: PortfolioHolding[];
+  risk_metrics?: {
+    portfolio_beta?: number;
+    daily_var_95?: number;
+    sharpe_ratio?: number;
+  };
+}
+
+export interface AgentQueryResponse {
+  query: string;
+  intent: string;
+  ticker_focus?: string | null;
+  answer: string;
+  thought_steps?: Array<{ step: number; agent: string; message: string }>;
+  tool_calls?: Array<Record<string, any>>;
+  citations?: Array<Record<string, any>>;
+  ui_widgets?: Array<Record<string, any>>;
+  guardrail_passed?: boolean;
 }
 
 // AI & RAG Research Types

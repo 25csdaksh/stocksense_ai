@@ -8,7 +8,7 @@ import { Currency } from "@/types";
 export interface AllocationItem {
   name: string;
   value: number;
-  weight: number; // 0 - 100
+  weight?: number; // 0 - 100
   color?: string;
 }
 
