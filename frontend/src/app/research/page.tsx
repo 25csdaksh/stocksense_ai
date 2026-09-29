@@ -1,169 +1,158 @@
 "use client";
 
 import React, { useState } from "react";
-import {
-  Sparkles,
-  Search,
-  FileText,
-  Bot,
-  Layers,
-  Database,
-  ShieldCheck,
-  CheckCircle2,
-} from "lucide-react";
-import { api } from "@/lib/api";
-import { DocumentCitation } from "@/types";
-import AgentChatDrawer from "@/components/agent/AgentChatDrawer";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/common/Card";
+import { Button } from "@/components/common/Button";
+import { Badge } from "@/components/common/Badge";
+import { Brain, Sparkles, Send, FileText, Database, ShieldAlert, CheckCircle2 } from "lucide-react";
 
 export default function ResearchPage() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTicker, setSelectedTicker] = useState("ALL");
-  const [searchResults, setSearchResults] = useState<DocumentCitation[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
+  const [query, setQuery] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
-
-    setIsSearching(true);
-    try {
-      const res = await api.searchFilings({
-        query: searchQuery,
-        ticker: selectedTicker === "ALL" ? undefined : selectedTicker,
-        top_k: 5,
-      });
-      setSearchResults(res.citations || []);
-    } catch (err) {
-      console.error("SEC RAG search error:", err);
-    } finally {
-      setIsSearching(false);
-    }
-  };
+  const sampleQueries = [
+    "Compare TCS.NS and INFY.NS fundamentals with 10-K regulatory risk factors",
+    "Analyze NVIDIA 10-K risk factors and realized volatility",
+    "Simulate 2020 COVID macro shock on RELIANCE.NS stock price",
+  ];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="bg-white p-6 rounded-2xl border border-border shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Bot className="w-5 h-5 text-primary" />
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-mono">
-              AI Multi-Agent Studio & RAG Regulatory Search
-            </h1>
-          </div>
-          <p className="text-xs text-slate-500">
-            Powered by LangGraph multi-agent orchestration, Google Gemini, and Qdrant semantic vector index across SEC 10-K/10-Q filings.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 text-xs font-mono bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1.5 rounded-xl font-bold">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          <span>RAG KNOWLEDGE INDEX ACTIVE</span>
-        </div>
-      </div>
-
-      {/* Main Grid: Streaming Agent Drawer & Dedicated SEC 10-K Search */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left: AI Multi-Agent Console (7 cols) */}
-        <div className="lg:col-span-7">
-          <AgentChatDrawer />
-        </div>
-
-        {/* Right: Direct SEC 10-K RAG Search Explorer (5 cols) */}
-        <div className="lg:col-span-5 bg-white p-6 rounded-xl border border-border shadow-sm flex flex-col justify-between space-y-4">
+    <AppLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center justify-between pb-3 border-b border-border mb-4">
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-primary" />
-                <h3 className="text-sm font-bold text-slate-900">
-                  SEC Regulatory Filings Search
-                </h3>
-              </div>
-              <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
-                DENSE RETRIEVAL
-              </span>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight text-content">AI Research Terminal</h1>
+              <Badge variant="gold" size="md">
+                LangGraph Multi-Agent
+              </Badge>
+            </div>
+            <p className="text-xs text-content-muted mt-0.5">
+              Autonomous financial synthesis across live market data, SEC 10-K filings, and ML analytics.
+            </p>
+          </div>
+        </div>
+
+        {/* Query Input Box */}
+        <Card className="border-primary/30 shadow-card">
+          <CardContent className="p-4 space-y-3">
+            <div className="relative">
+              <textarea
+                rows={3}
+                placeholder="Ask any institutional research inquiry (e.g. 'Evaluate TCS.NS valuation multiples vs sector average and retrieve SEC 10-K risk disclosures')..."
+                value={query}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setQuery(e.target.value)}
+                className="w-full rounded-xl border border-border bg-surface-subtle/50 p-3.5 text-sm text-content placeholder:text-content-muted/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none transition-all"
+              />
             </div>
 
-            {/* Search Input Form */}
-            <form onSubmit={handleSearch} className="space-y-3 mb-4">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="e.g. 'foundry TSMC risk', 'cloud gross margin'..."
-                  className="flex-1 px-3.5 py-2 text-xs rounded-lg border border-border bg-slate-50 focus:outline-none focus:ring-2 focus:ring-primary/40"
-                />
-                <select
-                  value={selectedTicker}
-                  onChange={(e) => setSelectedTicker(e.target.value)}
-                  className="px-2.5 py-2 text-xs rounded-lg border border-border bg-slate-50 font-mono font-bold"
-                >
-                  <option value="ALL">All</option>
-                  <option value="AAPL">AAPL</option>
-                  <option value="MSFT">MSFT</option>
-                  <option value="NVDA">NVDA</option>
-                  <option value="GOOGL">GOOGL</option>
-                  <option value="TSLA">TSLA</option>
-                  <option value="JPM">JPM</option>
-                </select>
-                <button
-                  type="submit"
-                  disabled={isSearching || !searchQuery.trim()}
-                  className="px-3.5 py-2 rounded-lg bg-primary hover:bg-primary-hover disabled:opacity-50 text-white text-xs font-bold transition"
-                >
-                  <Search className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </form>
-
-            {/* Citations List */}
-            <div className="space-y-3 overflow-y-auto max-h-[500px]">
-              {searchResults.length === 0 ? (
-                <div className="text-center py-16 text-slate-400 text-xs space-y-2">
-                  <Database className="w-8 h-8 text-slate-300 mx-auto" />
-                  <p>Query SEC 10-K disclosures to inspect verbatim citations and page references.</p>
-                </div>
-              ) : (
-                searchResults.map((c) => (
-                  <div
-                    key={c.id}
-                    className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/80 hover:bg-slate-50 space-y-2 transition"
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] font-semibold text-content-muted">Sample prompts:</span>
+                {sampleQueries.map((sq, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setQuery(sq)}
+                    className="text-[11px] px-2 py-0.5 rounded-md bg-surface-subtle border border-border text-content-muted hover:text-primary hover:border-primary/30 transition-colors truncate max-w-xs"
                   >
-                    <div className="flex items-center justify-between text-xs font-mono font-bold text-primary">
-                      <span>
-                        {c.ticker} {c.filing_type} (FY{c.fiscal_year})
-                      </span>
-                      <span className="text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded">
-                        Page {c.page_number}
-                      </span>
-                    </div>
+                    {sq}
+                  </button>
+                ))}
+              </div>
 
-                    <div className="text-[11px] font-semibold text-slate-700 font-mono">
-                      {c.section}
-                    </div>
-
-                    <p className="text-xs text-slate-600 italic font-serif leading-relaxed">
-                      "{c.content_snippet}"
-                    </p>
-
-                    <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 pt-1 border-t border-slate-200">
-                      <span>Relevance: {(c.relevance_score * 100).toFixed(1)}%</span>
-                      <span>Verified Regulatory Match</span>
-                    </div>
-                  </div>
-                ))
-              )}
+              <Button
+                variant="primary"
+                size="md"
+                isLoading={isProcessing}
+                onClick={() => setIsProcessing(true)}
+                rightIcon={<Send className="w-4 h-4" />}
+              >
+                Synthesize
+              </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Structured Research Response Sections Placeholder */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main 2 Cols: Research Output */}
+          <div className="lg:col-span-2 space-y-4">
+            <Card>
+              <CardHeader className="border-b border-border">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Brain className="w-4 h-4 text-primary" />
+                    <CardTitle className="text-sm">Structured Research Findings</CardTitle>
+                  </div>
+                  <Badge variant="primary" size="sm">
+                    Grounded Synthesis
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 space-y-6">
+                {/* Data Summary */}
+                <div className="space-y-1.5">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                    <Database className="w-3.5 h-3.5 text-primary" />
+                    1. Concrete Market Data
+                  </h4>
+                  <p className="text-xs text-content-muted leading-relaxed">
+                    Quantitative inputs, spot quotes in INR/USD, 24-hour volume changes, and valuation multiples.
+                  </p>
+                </div>
+
+                {/* Analysis */}
+                <div className="space-y-1.5">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-secondary" />
+                    2. Institutional Analysis
+                  </h4>
+                  <p className="text-xs text-content-muted leading-relaxed">
+                    Statistical findings, Fama-French 5-Factor Stock DNA deciles, and comparative margin health.
+                  </p>
+                </div>
+
+                {/* Assumptions & Uncertainty */}
+                <div className="space-y-1.5">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-accent flex items-center gap-1.5">
+                    <ShieldAlert className="w-3.5 h-3.5 text-accent" />
+                    3. Assumptions & Uncertainties
+                  </h4>
+                  <p className="text-xs text-content-muted leading-relaxed">
+                    Methodological constraints, volatility boundaries, and non-deterministic assumptions.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
-          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-500 flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-primary shrink-0" />
-            <span>
-              All regulatory citations are retrieved with exact document hashes and metadata verification.
-            </span>
+          {/* Right Col: RAG Citations Inspector */}
+          <div className="space-y-4">
+            <Card>
+              <CardHeader className="border-b border-border">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-primary" />
+                  <CardTitle className="text-sm">Verified Document Citations</CardTitle>
+                </div>
+                <CardDescription>SEC 10-K & Annual Report Extracts</CardDescription>
+              </CardHeader>
+              <CardContent className="p-4 space-y-3">
+                <div className="p-3 rounded-xl bg-surface-subtle border border-border text-xs space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Badge variant="primary" size="sm">[Source 1]</Badge>
+                    <span className="text-[10px] text-content-muted">FY2025 • Item 1A</span>
+                  </div>
+                  <p className="text-[11px] text-content-muted leading-relaxed line-clamp-3">
+                    Regulatory risks, competition, and macroeconomic dependency disclosures indexed from official regulatory filings.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }

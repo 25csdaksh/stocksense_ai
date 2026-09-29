@@ -1,29 +1,40 @@
 import type { Metadata } from "next";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/ui/Navbar";
-import Sidebar from "@/components/ui/Sidebar";
+import { AuthProvider } from "@/hooks/useAuth";
+import { ToastProvider } from "@/components/common/Toast";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
-  title: "MARKETMIND AI — Stock Market Intelligence & Scenario Platform",
+  title: "MarketMind AI | AI-Powered Stock Market Intelligence",
   description:
-    "AI-Powered Stock Market Intelligence, RAG Knowledge Engine, and Scenario Analysis Platform.",
+    "Institutional-grade financial intelligence, LangGraph research agent, SEC 10-K RAG, ML anomaly detection, and scenario stress testing for Indian (NSE/BSE) and Global markets.",
 };
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-background text-slate-900 flex flex-col font-sans">
-        <Navbar />
-        <div className="flex-1 flex overflow-hidden">
-          <Sidebar />
-          <main className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
+    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
+      <body className="bg-background text-content font-sans antialiased min-h-screen">
+        <AuthProvider>
+          <ToastProvider>
             {children}
-          </main>
-        </div>
+          </ToastProvider>
+        </AuthProvider>
       </body>
     </html>
   );

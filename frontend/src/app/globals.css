@@ -2,62 +2,85 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #F8FAFC;
-  --foreground: #0F172A;
-  --panel-bg: #FFFFFF;
-  --primary-color: #0A4D3C;
-  --gold-accent: #C5A059;
-}
+@layer base {
+  :root {
+    --background: #F7F8F5;
+    --surface: #FFFFFF;
+    --primary: #12372A;
+    --primary-hover: #0D2A20;
+    --secondary: #2F5D50;
+    --accent: #C9A227;
+    --text: #17211B;
+    --muted: #6B756E;
+    --border: #E3E7E3;
+    --gain: #0D824D;
+    --loss: #D32F2F;
+  }
 
-body {
-  background-color: var(--background);
-  color: var(--foreground);
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  body {
+    background-color: var(--background);
+    color: var(--text);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "tnum";
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 }
 
 /* Custom Financial Terminal Scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #F1F5F9;
+  background: #F0F2ED;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
+  background: #CBD2C9;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
+  background: #9EA89C;
 }
 
-/* Glass panel styling for light theme */
-.glass-panel {
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(8px);
-  border: 1px solid #E2E8F0;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+/* Glass & Card Design Tokens */
+.card-base {
+  background-color: #FFFFFF;
+  border: 1px solid #E3E7E3;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px 0 rgba(18, 55, 42, 0.04), 0 1px 2px 0 rgba(18, 55, 42, 0.02);
 }
 
-.financial-table th {
-  background-color: #F8FAFC;
-  color: #475569;
-  font-weight: 600;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid #E2E8F0;
+.card-interactive {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.financial-table td {
-  padding: 0.75rem 1rem;
-  font-size: 0.875rem;
-  border-bottom: 1px solid #F1F5F9;
+.card-interactive:hover {
+  box-shadow: 0 6px 16px -2px rgba(18, 55, 42, 0.08), 0 2px 6px -1px rgba(18, 55, 42, 0.04);
+  border-color: #CBD2C9;
+}
+
+/* Tabular Financial Numbers */
+.font-tabular {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Subtle Shimmer for Skeletons */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #F0F2ED 25%, #E3E7E3 50%, #F0F2ED 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
 }

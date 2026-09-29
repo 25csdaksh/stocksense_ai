@@ -1,151 +1,138 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
-import { createChart, ColorType, IChartApi, ISeriesApi } from "lightweight-charts";
-import { OHLCVBar } from "@/types";
+import { createChart, IChartApi, ISeriesApi, CandlestickData, HistogramData, UTCTimestamp } from "lightweight-charts";
+import { OHLCV } from "@/types";
 
-interface CandlestickChartProps {
-  data: OHLCVBar[];
+export interface CandlestickChartProps {
+  data: OHLCV[];
   height?: number;
-  showVolume?: boolean;
+  className?: string;
+  currency?: string;
 }
 
-export default function CandlestickChart({ data, height = 420, showVolume = true }: CandlestickChartProps) {
-  const chartContainerRef = useRef<HTMLDivElement>(null);
+export const CandlestickChart: React.FC<CandlestickChartProps> = ({
+  data,
+  height = 400,
+  className,
+}) => {
+  const chartContainerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  const candleSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
 
   useEffect(() => {
-    if (!chartContainerRef.current || !data || data.length === 0) return;
+    if (!chartContainerRef.current) return;
 
-    // Initialize Lightweight Chart with Light Theme Colors
+    // Initialize Lightweight Chart
     const chart = createChart(chartContainerRef.current, {
+      width: chartContainerRef.current.clientWidth,
+      height: height,
       layout: {
-        background: { type: ColorType.Solid, color: "#FFFFFF" },
-        textColor: "#475569",
-        fontFamily: "Inter, sans-serif",
+        background: { color: "#FFFFFF" },
+        textColor: "#6B756E",
+        fontSize: 11,
       },
       grid: {
-        vertLines: { color: "#F1F5F9" },
-        horzLines: { color: "#F1F5F9" },
+        vertLines: { color: "#F0F2ED" },
+        horzLines: { color: "#F0F2ED" },
       },
       crosshair: {
-        vertLine: { color: "#94A3B8", width: 1, style: 2 },
-        horzLine: { color: "#94A3B8", width: 1, style: 2 },
+        vertLine: { color: "#12372A", width: 1, style: 2 },
+        horzLine: { color: "#12372A", width: 1, style: 2 },
       },
       rightPriceScale: {
-        borderColor: "#E2E8F0",
+        borderColor: "#E3E7E3",
+        scaleMargins: {
+          top: 0.1,
+          bottom: 0.25,
+        },
       },
       timeScale: {
-        borderColor: "#E2E8F0",
+        borderColor: "#E3E7E3",
         timeVisible: true,
         secondsVisible: false,
       },
-      width: chartContainerRef.current.clientWidth,
-      height: height,
     });
 
-    chartRef.current = chart;
-
-    // 1. Candlestick Series
+    // Add Candlestick series
     const candleSeries = chart.addCandlestickSeries({
       upColor: "#0D824D",
       downColor: "#D32F2F",
-      borderVisible: false,
+      borderUpColor: "#0D824D",
+      borderDownColor: "#D32F2F",
       wickUpColor: "#0D824D",
       wickDownColor: "#D32F2F",
     });
 
-    const candleData = data.map((d) => ({
-      time: d.time,
-      open: d.open,
-      high: d.high,
-      low: d.low,
-      close: d.close,
-    }));
-    candleSeries.setData(candleData);
-
-    // 2. SMA 20 Line Overlay
-    const sma20Series = chart.addLineSeries({
-      color: "#2563EB",
-      lineWidth: 1,
-      title: "SMA 20",
+    // Add Volume histogram series
+    const volumeSeries = chart.addHistogramSeries({
+      priceFormat: {
+        type: "volume",
+      },
+      priceScaleId: "", // overlay
     });
-    const sma20Data = data
-      .filter((d) => d.sma_20 !== null && d.sma_20 !== undefined)
-      .map((d) => ({ time: d.time, value: d.sma_20 as number }));
-    if (sma20Data.length > 0) sma20Series.setData(sma20Data);
 
-    // 3. SMA 50 Line Overlay
-    const sma50Series = chart.addLineSeries({
-      color: "#C5A059",
-      lineWidth: 1,
-      title: "SMA 50",
+    volumeSeries.priceScale().applyOptions({
+      scaleMargins: {
+        top: 0.8,
+        bottom: 0,
+      },
     });
-    const sma50Data = data
-      .filter((d) => d.sma_50 !== null && d.sma_50 !== undefined)
-      .map((d) => ({ time: d.time, value: d.sma_50 as number }));
-    if (sma50Data.length > 0) sma50Series.setData(sma50Data);
 
-    // 4. Volume Histogram (Optional)
-    if (showVolume) {
-      const volumeSeries = chart.addHistogramSeries({
-        color: "#CBD5E1",
-        priceFormat: {
-          type: "volume",
-        },
-        priceScaleId: "", // overlay
-      });
-      volumeSeries.priceScale().applyOptions({
-        scaleMargins: {
-          top: 0.8,
-          bottom: 0,
-        },
-      });
+    chartRef.current = chart;
+    candleSeriesRef.current = candleSeries;
+    volumeSeriesRef.current = volumeSeries;
 
-      const volumeData = data.map((d) => ({
-        time: d.time,
-        value: d.volume,
-        color: d.close >= d.open ? "rgba(13, 130, 77, 0.25)" : "rgba(211, 47, 47, 0.25)",
-      }));
-      volumeSeries.setData(volumeData);
-    }
-
-    chart.timeScale().fitContent();
-
+    // Handle Resize
     const handleResize = () => {
       if (chartContainerRef.current && chartRef.current) {
-        chartRef.current.applyOptions({ width: chartContainerRef.current.clientWidth });
+        chartRef.current.applyOptions({
+          width: chartContainerRef.current.clientWidth,
+        });
       }
     };
+
     window.addEventListener("resize", handleResize);
 
     return () => {
       window.removeEventListener("resize", handleResize);
       chart.remove();
     };
-  }, [data, height, showVolume]);
+  }, [height]);
+
+  useEffect(() => {
+    if (!candleSeriesRef.current || !volumeSeriesRef.current || !data || data.length === 0) {
+      return;
+    }
+
+    // Format OHLCV data for Lightweight charts (sorted ascending by timestamp)
+    const sortedData = [...data].sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+
+    const candleData: CandlestickData[] = sortedData.map((d) => ({
+      time: (Math.floor(new Date(d.timestamp).getTime() / 1000) as UTCTimestamp),
+      open: d.open,
+      high: d.high,
+      low: d.low,
+      close: d.close,
+    }));
+
+    const volumeData: HistogramData[] = sortedData.map((d) => ({
+      time: (Math.floor(new Date(d.timestamp).getTime() / 1000) as UTCTimestamp),
+      value: d.volume,
+      color: d.close >= d.open ? "rgba(13, 130, 77, 0.2)" : "rgba(211, 47, 47, 0.2)",
+    }));
+
+    candleSeriesRef.current.setData(candleData);
+    volumeSeriesRef.current.setData(volumeData);
+    chartRef.current?.timeScale().fitContent();
+  }, [data]);
 
   return (
-    <div className="w-full relative">
-      <div className="flex items-center gap-4 mb-2 text-xs font-mono">
-        <div className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-financial-gain inline-block"></span>
-          <span className="text-slate-600">Bullish</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-financial-loss inline-block"></span>
-          <span className="text-slate-600">Bearish</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-3 h-0.5 bg-blue-600 inline-block"></span>
-          <span className="text-slate-600">SMA 20</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-3 h-0.5 bg-gold inline-block"></span>
-          <span className="text-slate-600">SMA 50</span>
-        </div>
-      </div>
-      <div ref={chartContainerRef} className="w-full rounded-lg border border-border overflow-hidden shadow-sm" />
+    <div className={className}>
+      <div ref={chartContainerRef} className="w-full rounded-lg overflow-hidden" />
     </div>
   );
-}
+};
