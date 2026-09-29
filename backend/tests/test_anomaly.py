@@ -1,0 +1,66 @@
+"""
+Anomaly Detection, GARCH Volatility & Volume Spike Unit Tests.
+"""
+import pytest
+import numpy as np
+import pandas as pd
+from app.analytics.anomaly import MarketAnomalyDetector, GARCHVolatilityModel, VolumeSpikeDetector
+
+
+@pytest.fixture
+def series_data():
+    np.random.seed(42)
+    n = 60
+    closes = 100.0 + np.cumsum(np.random.normal(0.05, 1.5, n))
+    highs = closes + np.random.uniform(0.5, 2.0, n)
+    lows = closes - np.random.uniform(0.5, 2.0, n)
+    volumes = np.random.uniform(1000000, 3000000, n)
+
+    # Inject an obvious price & volume anomaly at step 45
+    closes[45] += 15.0
+    highs[45] += 16.0
+    volumes[45] *= 8.0
+
+    return pd.DataFrame({
+        "time": [f"2024-02-{i+1:02d}" for i in range(n)],
+        "open": closes - 0.2,
+        "high": highs,
+        "low": lows,
+        "close": closes,
+        "volume": volumes
+    })
+
+
+def test_isolation_forest_anomaly_detector(series_data):
+    detector = MarketAnomalyDetector(contamination=0.08)
+    anomalies = detector.detect_anomalies(series_data, ticker="NVDA")
+
+    assert isinstance(anomalies, list)
+    assert len(anomalies) > 0
+    first = anomalies[0]
+    assert first["ticker"] == "NVDA"
+    assert "severity_score" in first
+    assert "anomaly_type" in first
+    assert "metrics" in first
+
+
+def test_garch_volatility_forecasting(series_data):
+    returns = series_data["close"].pct_change().dropna().values
+    garch = GARCHVolatilityModel()
+    res = garch.forecast(returns, horizon=5)
+
+    assert "current_annualized_volatility_pct" in res
+    assert "forecast_next_days" in res
+    assert len(res["forecast_next_days"]) == 5
+    assert res["current_annualized_volatility_pct"] > 0
+    assert "regime" in res
+
+
+def test_volume_spike_detector(series_data):
+    spike_det = VolumeSpikeDetector(window=20, z_threshold=2.0)
+    res = spike_det.analyze(series_data, ticker="NVDA")
+
+    assert res["ticker"] == "NVDA"
+    assert "volume_zscore" in res
+    assert "is_spike" in res
+    assert "institutional_flow_hint" in res
