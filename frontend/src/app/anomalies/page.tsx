@@ -1,125 +1,200 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { StatCard } from "@/components/common/StatCard";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/common/Card";
-import { Badge } from "@/components/common/Badge";
-import { AlertTriangle, TrendingDown, Zap, ShieldAlert } from "lucide-react";
+import {
+  AnomalyHeader,
+  AnomalyFilters,
+  SystemicStressOverview,
+  AnomalyFeed,
+  AnomalySeverityDistribution,
+  AnomalyTimeline,
+  AnomalySignalBreakdown,
+  VolumeSurveillance,
+  VolatilitySurveillance,
+  CrossAssetAnomalyMap,
+  AnomalyInspector,
+  AIAnomalyExplanation,
+  AnomalyNewsContext,
+} from "@/components/anomalies";
+import { ErrorState } from "@/components/common/ErrorState";
+import { useAnomalyFeed, EnrichedAnomalyItem } from "@/hooks/useAnomalyFeed";
+import { useAnomalyDetail } from "@/hooks/useAnomalyDetail";
 
 export default function AnomaliesPage() {
-  const anomalies = [
-    {
-      id: "anom-1",
-      ticker: "TCS.NS",
-      type: "VOLUME_SURGE",
-      severity: "HIGH",
-      price: "₹4,250.00",
-      description: "Unusual volume spike exceeding 3.8 standard deviations with 4.2x average 30-day volume.",
-      time: "25 mins ago",
-    },
-    {
-      id: "anom-2",
-      ticker: "RELIANCE.NS",
-      type: "VOLATILITY_BURST",
-      severity: "MEDIUM",
-      price: "₹2,950.40",
-      description: "GARCH(1,1) conditional volatility expanded to 32.4% annualized following block deal rumors.",
-      time: "1 hour ago",
-    },
-    {
-      id: "anom-3",
-      ticker: "NVDA",
-      type: "PRICE_SPIKE",
-      severity: "LOW",
-      price: "$124.50",
-      description: "Intraday momentum deviation detected via Isolation Forest (Contamination score = 0.021).",
-      time: "3 hours ago",
-      isDemo: true,
-    },
-  ];
+  const {
+    anomalies,
+    allAnomalies,
+    totalActiveCount,
+    criticalCount,
+    highCount,
+    systemicStressIndex,
+    severityDistribution,
+    isLoading,
+    isError,
+    error,
+    isDemo,
+    lastUpdated,
+    severityFilter,
+    setSeverityFilter,
+    typeFilter,
+    setTypeFilter,
+    searchQuery,
+    setSearchQuery,
+    timeWindow,
+    setTimeWindow,
+    refresh,
+  } = useAnomalyFeed();
+
+  const [selectedAnomaly, setSelectedAnomaly] = useState<EnrichedAnomalyItem | null>(
+    anomalies[0] || null
+  );
+  const [isInspectorOpen, setIsInspectorOpen] = useState<boolean>(false);
+
+  // Deep telemetry for selected asset
+  const { tickerData, news, isLoading: isDetailLoading } = useAnomalyDetail(
+    selectedAnomaly?.ticker || "RELIANCE.NS"
+  );
+
+  const handleSelectAnomaly = (item: EnrichedAnomalyItem) => {
+    setSelectedAnomaly(item);
+    setIsInspectorOpen(true);
+  };
+
+  const handleResetFilters = () => {
+    setSeverityFilter("ALL");
+    setTypeFilter("ALL");
+    setSearchQuery("");
+    setTimeWindow("1D");
+  };
+
+  const handleScrollToAI = () => {
+    const el = document.getElementById("ai-anomaly-investigator");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  if (isError && allAnomalies.length === 0) {
+    return (
+      <AppLayout>
+        <div className="py-12">
+          <ErrorState
+            title="Unable to Load Anomaly Surveillance Feeds"
+            message={error || "An unexpected error occurred while communicating with the anomaly service."}
+            onRetry={refresh}
+          />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  const activeHoldingAnomaly = selectedAnomaly || anomalies[0] || null;
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-content">Market Anomalies & Volatility</h1>
-            <Badge variant="loss" size="md">
-              Isolation Forest + GARCH
-            </Badge>
+      <div className="space-y-6 pb-12">
+        {/* A. Anomaly Command Header */}
+        <AnomalyHeader
+          totalActiveCount={totalActiveCount}
+          criticalCount={criticalCount}
+          systemicStressIndex={systemicStressIndex}
+          lastUpdated={lastUpdated}
+          isMarketOpen={true}
+          isDemo={isDemo}
+          isLoading={isLoading}
+          onRefresh={refresh}
+          onAIInvestigate={handleScrollToAI}
+        />
+
+        {/* B. Systemic Stress Overview */}
+        <SystemicStressOverview
+          systemicStressIndex={systemicStressIndex}
+          totalActiveCount={totalActiveCount}
+          highCount={highCount}
+          criticalCount={criticalCount}
+          marketVolatility={14.8}
+        />
+
+        {/* C. Filter Bar */}
+        <AnomalyFilters
+          severityFilter={severityFilter}
+          onSelectSeverity={setSeverityFilter}
+          typeFilter={typeFilter}
+          onSelectType={setTypeFilter}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          timeWindow={timeWindow}
+          onSelectTimeWindow={setTimeWindow}
+          onReset={handleResetFilters}
+        />
+
+        {/* D. Feed & Severity Distribution */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div className="lg:col-span-8">
+            <AnomalyFeed
+              anomalies={anomalies}
+              selectedAnomalyId={activeHoldingAnomaly?.id}
+              onSelectAnomaly={handleSelectAnomaly}
+              isLoading={isLoading}
+            />
           </div>
-          <p className="text-xs text-content-muted mt-0.5">
-            Real-time multivariate statistical anomaly detection and abnormal volume surge detection.
-          </p>
+
+          <div className="lg:col-span-4 space-y-6">
+            <AnomalySeverityDistribution
+              distribution={severityDistribution}
+              activeSeverity={severityFilter}
+              onSelectSeverity={setSeverityFilter}
+            />
+            <AnomalyTimeline
+              anomalies={allAnomalies}
+              selectedAnomalyId={activeHoldingAnomaly?.id}
+              onSelectAnomaly={handleSelectAnomaly}
+            />
+          </div>
         </div>
 
-        {/* Snapshot Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <StatCard
-            label="Active Anomalies"
-            value="3 Detections"
-            change={2}
-            changeLabel="last 24 hours"
-            icon={<AlertTriangle className="w-4 h-4 text-financial-loss" />}
-          />
-          <StatCard
-            label="Max Volume Z-Score"
-            value="+3.82σ"
-            changeLabel="TCS.NS (NSE)"
-            icon={<Zap className="w-4 h-4 text-accent" />}
-          />
-          <StatCard
-            label="Average Market Vol"
-            value="14.8%"
-            change={-0.8}
-            changeLabel="30-day EWMA"
-            icon={<TrendingDown className="w-4 h-4 text-primary" />}
-          />
+        {/* E & F. Statistical Signal Breakdown & Volume / Volatility Surveillance */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div className="lg:col-span-6">
+            <AnomalySignalBreakdown anomaly={activeHoldingAnomaly} />
+          </div>
+
+          <div className="lg:col-span-6 space-y-6">
+            <VolumeSurveillance
+              ticker={activeHoldingAnomaly?.ticker || "RELIANCE.NS"}
+              volumeZScore={activeHoldingAnomaly?.metrics?.volume_z_score || activeHoldingAnomaly?.z_score}
+            />
+            <VolatilitySurveillance
+              ticker={activeHoldingAnomaly?.ticker || "RELIANCE.NS"}
+              garchVol={activeHoldingAnomaly?.metrics?.garch_volatility_pct || 38.4}
+            />
+          </div>
         </div>
 
-        {/* Anomalies List */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Detected Statistical Anomalies</CardTitle>
-            <CardDescription>Multi-asset alerts scored by statistical deviation</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {anomalies.map((item) => (
-                <div
-                  key={item.id}
-                  className="p-4 rounded-xl border border-border bg-surface hover:bg-surface-subtle transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4"
-                >
-                  <div className="space-y-1.5 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-content">{item.ticker}</span>
-                      <Badge
-                        variant={item.severity === "HIGH" ? "loss" : item.severity === "MEDIUM" ? "gold" : "neutral"}
-                        size="sm"
-                      >
-                        {item.severity} SEVERITY
-                      </Badge>
-                      <Badge variant="outline" size="sm">
-                        {item.type}
-                      </Badge>
-                      {item.isDemo && (
-                        <Badge variant="gold" size="sm">
-                          DEMO
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-xs text-content-muted leading-relaxed">{item.description}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm font-bold text-content font-tabular">{item.price}</p>
-                    <p className="text-[11px] text-content-muted">{item.time}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        {/* G. Cross-Asset Decoupling Map */}
+        <CrossAssetAnomalyMap anomaliesCount={anomalies.length} />
+
+        {/* H. News Context */}
+        <AnomalyNewsContext
+          ticker={activeHoldingAnomaly?.ticker || "RELIANCE.NS"}
+          news={news}
+          isLoading={isDetailLoading}
+        />
+
+        {/* I. Ask MarketMind to Explain This Anomaly (AI Assistant) */}
+        <AIAnomalyExplanation
+          selectedTicker={activeHoldingAnomaly?.ticker}
+          anomaly={activeHoldingAnomaly}
+        />
+
+        {/* Selected Anomaly Inspector Modal */}
+        <AnomalyInspector
+          anomaly={selectedAnomaly}
+          isOpen={isInspectorOpen}
+          onClose={() => setIsInspectorOpen(false)}
+          onTriggerAI={(t) => handleScrollToAI()}
+        />
       </div>
     </AppLayout>
   );

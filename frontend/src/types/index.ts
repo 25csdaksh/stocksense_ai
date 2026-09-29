@@ -327,6 +327,113 @@ export interface TickerAnomalyResponse {
 }
 
 // Scenario Simulation Types
+export type ScenarioMode = "MONTE_CARLO" | "HISTORICAL_STRESS" | "MACRO_SHOCK" | "PORTFOLIO_STRESS";
+
+export interface MonteCarloRequest {
+  ticker: string;
+  drift_annualized: number;
+  volatility_annualized: number;
+  days: number;
+  iterations: number;
+  jump_intensity: number;
+}
+
+export interface FanChartPoint {
+  day: number;
+  p10: number;
+  p25: number;
+  p50: number;
+  p75: number;
+  p90: number;
+}
+
+export interface DistributionBin {
+  range_label: string;
+  midpoint: number;
+  frequency: number;
+}
+
+export interface MonteCarloResponse {
+  ticker: string;
+  initial_price: number;
+  days: number;
+  iterations: number;
+  annualized_drift_pct: number;
+  annualized_volatility_pct: number;
+  expected_terminal_price_p50: number;
+  terminal_p10_price: number;
+  terminal_p90_price: number;
+  value_at_risk_95_pct: number;
+  value_at_risk_99_pct: number;
+  cvar_expected_shortfall_99_pct: number;
+  probability_of_profit_pct: number;
+  prob_loss_exceeding_10pct: number;
+  prob_gain_exceeding_20pct: number;
+  fan_chart: FanChartPoint[];
+  distribution_histogram: DistributionBin[];
+  disclaimer: string;
+}
+
+export interface HistoricalStressRequest {
+  ticker: string;
+  current_price?: number;
+  sector?: string;
+  beta?: number;
+}
+
+export interface ScenarioCrisisResult {
+  scenario_name: string;
+  period: string;
+  projected_drawdown_pct: number;
+  stressed_price: number;
+  estimated_loss_per_share: number;
+  description: string;
+}
+
+export interface HistoricalStressResponse {
+  ticker: string;
+  current_price: number;
+  sector: string;
+  beta: number;
+  scenario_results: Record<string, ScenarioCrisisResult>;
+  disclaimer: string;
+}
+
+export interface MacroShockRequest {
+  ticker: string;
+  rate_shock_bps: number;
+  inflation_shock_pct: number;
+  oil_shock_pct: number;
+  gdp_shock_pct: number;
+}
+
+export interface MacroShockResponse {
+  ticker: string;
+  current_price: number;
+  projected_price: number;
+  total_projected_return_pct: number;
+  dollar_impact_per_share: number;
+  factor_decomposition: {
+    rates_effect_pct: number;
+    inflation_effect_pct: number;
+    oil_effect_pct: number;
+    gdp_effect_pct: number;
+  };
+  disclaimer: string;
+}
+
+export interface PortfolioStressTestHoldingInput {
+  ticker: string;
+  shares: number;
+  price?: number;
+  sector?: string;
+  beta?: number;
+}
+
+export interface PortfolioStressTestRequest {
+  holdings?: PortfolioStressTestHoldingInput[];
+}
+
 export interface ScenarioSimulationRequest {
   ticker: string;
   days_ahead: number;

@@ -1,114 +1,175 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
+import { useSearchParams } from "next/navigation";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/common/Card";
-import { StatCard } from "@/components/common/StatCard";
-import { Select } from "@/components/common/Select";
-import { Button } from "@/components/common/Button";
-import { Badge } from "@/components/common/Badge";
-import { Activity, Play, AlertOctagon, HelpCircle } from "lucide-react";
+import { useScenarioSimulation } from "@/hooks/useScenarioSimulation";
+import {
+  ScenarioHeader,
+  ScenarioSelector,
+  ScenarioConfiguration,
+  SimulationControls,
+  MonteCarloSimulation,
+  ScenarioDistributionChart,
+  HistoricalStressTests,
+  PortfolioStressResults,
+  ScenarioRiskMetrics,
+  ScenarioComparison,
+  AIScenarioInterpretation,
+  ScenarioAssumptions,
+  ScenarioLimitations,
+} from "@/components/scenarios";
+import { ScenarioAIContext } from "@/hooks/useScenarioAI";
 
-export default function ScenariosPage() {
-  const [selectedTicker, setSelectedTicker] = useState("RELIANCE.NS");
-  const [selectedCrisis, setSelectedCrisis] = useState("2020_COVID");
+function ScenariosContent() {
+  const searchParams = useSearchParams();
+  const initialPortfolioId = searchParams.get("portfolioId");
+  const initialTicker = searchParams.get("ticker") || undefined;
+  const initialTargetType = initialPortfolioId ? "PORTFOLIO" : "STOCK";
 
-  const tickerOptions = [
-    { value: "RELIANCE.NS", label: "RELIANCE.NS (NSE India)" },
-    { value: "TCS.NS", label: "TCS.NS (NSE India)" },
-    { value: "INFY.NS", label: "INFY.NS (NSE India)" },
-    { value: "NVDA", label: "NVDA (Demo Data)" },
-  ];
+  const {
+    params,
+    updateParam,
+    resetParams,
+    runSimulation,
+    isLoading,
+    loadingStage,
+    error,
+    lastRunTimestamp,
+    monteCarloResult,
+    historicalStressResult,
+    macroShockResult,
+    portfolioStressResult,
+  } = useScenarioSimulation(
+    initialTicker,
+    initialPortfolioId ? "PORTFOLIO_STRESS" : "MONTE_CARLO",
+    initialTargetType
+  );
 
-  const crisisOptions = [
-    { value: "2020_COVID", label: "2020 COVID Market Crash (-38% Index Drawdown)" },
-    { value: "2008_GFC", label: "2008 Global Financial Crisis (-54% Liquidity Freeze)" },
-    { value: "2022_TECH_SELLOFF", label: "2022 Tech Rate Hike Selloff (-32% Multiple Compression)" },
-  ];
+  // Compute AI Context
+  const aiContext: ScenarioAIContext = {
+    ticker: params.targetType === "STOCK" ? params.ticker : undefined,
+    mode: params.mode,
+    currentPrice:
+      params.mode === "MONTE_CARLO"
+        ? monteCarloResult?.initial_price
+        : params.mode === "HISTORICAL_STRESS"
+        ? historicalStressResult?.current_price
+        : params.mode === "MACRO_SHOCK"
+        ? macroShockResult?.current_price
+        : undefined,
+    expectedTerminalPrice: monteCarloResult?.expected_terminal_price_p50,
+    var95: monteCarloResult?.value_at_risk_95_pct,
+    cvar99: monteCarloResult?.cvar_expected_shortfall_99_pct,
+    macroReturnPct: macroShockResult?.total_projected_return_pct,
+    crisesDrawdowns: historicalStressResult?.scenario_results
+      ? Object.fromEntries(
+          Object.entries(historicalStressResult.scenario_results).map(([k, v]) => [
+            k,
+            v.projected_drawdown_pct,
+          ])
+        )
+      : undefined,
+    portfolioLossDollars: portfolioStressResult?.crises_stress_results?.GFC_2008
+      ?.projected_portfolio_loss_dollars,
+  };
 
   return (
-    <AppLayout>
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      {/* 1. Command Header */}
+      <ScenarioHeader
+        targetType={params.targetType}
+        ticker={params.ticker}
+        mode={params.mode}
+        lastRunTimestamp={lastRunTimestamp}
+        isLoading={isLoading}
+        onRun={runSimulation}
+        onReset={resetParams}
+      />
+
+      {/* 2. Simulation Controls / Loading / Error Banner */}
+      <SimulationControls
+        isLoading={isLoading}
+        loadingStage={loadingStage}
+        error={error}
+        onRetry={runSimulation}
+      />
+
+      {/* 3. Target & Mode Selector */}
+      <ScenarioSelector
+        targetType={params.targetType}
+        mode={params.mode}
+        ticker={params.ticker}
+        onTargetTypeChange={(target) => updateParam("targetType", target)}
+        onModeChange={(mode) => updateParam("mode", mode)}
+        onTickerChange={(ticker) => updateParam("ticker", ticker)}
+      />
+
+      {/* 4. Scenario Parameters Configuration Panel */}
+      <ScenarioConfiguration
+        params={params}
+        updateParam={updateParam}
+        isLoading={isLoading}
+      />
+
+      {/* 5. Primary Mode Results */}
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-tight text-content">Scenario Simulation & Stress Engine</h1>
-              <Badge variant="primary" size="md">
-                Merton Jump Diffusion
-              </Badge>
-            </div>
-            <p className="text-xs text-content-muted mt-0.5">
-              1,000+ Path Monte Carlo stochastic simulations and historical crisis replay.
-            </p>
-          </div>
-        </div>
-
-        {/* Configuration Bar */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Simulation Parameters</CardTitle>
-            <CardDescription>Configure stochastic paths, horizon, and historical stress overlays</CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-            <Select
-              label="Target Instrument"
-              options={tickerOptions}
-              value={selectedTicker}
-              onChange={(e) => setSelectedTicker(e.target.value)}
+        {params.mode === "MONTE_CARLO" && (
+          <>
+            <ScenarioRiskMetrics
+              mode="MONTE_CARLO"
+              monteCarloData={monteCarloResult}
+              macroShockData={null}
+              isLoading={isLoading}
             />
-            <Select
-              label="Historical Crisis Replay"
-              options={crisisOptions}
-              value={selectedCrisis}
-              onChange={(e) => setSelectedCrisis(e.target.value)}
-            />
-            <Button variant="gold" size="md" leftIcon={<Play className="w-4 h-4" />}>
-              Run Monte Carlo Simulation
-            </Button>
-          </CardContent>
-        </Card>
+            <MonteCarloSimulation data={monteCarloResult} isLoading={isLoading} />
+            <ScenarioDistributionChart data={monteCarloResult} isLoading={isLoading} />
+          </>
+        )}
 
-        {/* Quantile Metrics */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <StatCard
-            label="95% Value-at-Risk (VaR)"
-            value="-5.84%"
-            changeLabel="30-Day Simulated Horizon"
-            icon={<AlertOctagon className="w-4 h-4 text-financial-loss" />}
-          />
-          <StatCard
-            label="Expected Shortfall (CVaR)"
-            value="-8.12%"
-            changeLabel="Tail risk beyond 95th percentile"
-            icon={<AlertOctagon className="w-4 h-4 text-financial-loss" />}
-          />
-          <StatCard
-            label="Median Path (p50)"
-            value="+2.40%"
-            changeLabel="Expected drift return"
-            icon={<Activity className="w-4 h-4 text-primary" />}
-          />
-        </div>
+        {params.mode === "HISTORICAL_STRESS" && (
+          <HistoricalStressTests data={historicalStressResult} isLoading={isLoading} />
+        )}
 
-        {/* Simulation Chart Shell */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Stochastic Quantile Cone (p05 – p95)</CardTitle>
-              <CardDescription>1,000 simulated price trajectories across 30 trading days</CardDescription>
-            </div>
-            <div className="flex items-center gap-1.5 text-[11px] text-content-muted">
-              <HelpCircle className="w-3.5 h-3.5" />
-              <span>Simulation, not financial prediction</span>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="h-72 rounded-xl bg-surface-subtle/70 border border-dashed border-border flex items-center justify-center text-xs text-content-muted">
-              Simulation Cone Distribution Recharts AreaLine Chart Shell
-            </div>
-          </CardContent>
-        </Card>
+        {params.mode === "MACRO_SHOCK" && (
+          <ScenarioRiskMetrics
+            mode="MACRO_SHOCK"
+            monteCarloData={null}
+            macroShockData={macroShockResult}
+            isLoading={isLoading}
+          />
+        )}
+
+        {params.mode === "PORTFOLIO_STRESS" && (
+          <PortfolioStressResults data={portfolioStressResult} isLoading={isLoading} />
+        )}
       </div>
+
+      {/* 6. Multi-Scenario Comparison Matrix */}
+      <ScenarioComparison
+        historicalData={historicalStressResult}
+        monteCarloData={monteCarloResult}
+        macroData={macroShockResult}
+      />
+
+      {/* 7. AI Scenario Interpretation */}
+      <AIScenarioInterpretation context={aiContext} />
+
+      {/* 8. Methodology Assumptions & Limitations */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <ScenarioAssumptions mode={params.mode} />
+        <ScenarioLimitations />
+      </div>
+    </div>
+  );
+}
+
+export default function ScenariosPage() {
+  return (
+    <AppLayout>
+      <ScenariosContent />
     </AppLayout>
   );
 }
+
+
