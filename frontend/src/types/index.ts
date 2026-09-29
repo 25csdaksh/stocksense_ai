@@ -175,6 +175,9 @@ export interface NewsArticle {
   sentiment_label: 'POSITIVE' | 'NEUTRAL' | 'NEGATIVE' | 'BULLISH' | 'BEARISH';
   related_tickers?: string[];
   impact_score?: number;
+  sector?: string;
+  market?: 'INDIA' | 'GLOBAL';
+  is_market_moving?: boolean;
 }
 
 export interface NewsSentimentSummary {
@@ -183,6 +186,97 @@ export interface NewsSentimentSummary {
   average_sentiment_score: number;
   news_items: NewsArticle[];
 }
+
+export interface SectorNewsSentiment {
+  sector: string;
+  article_count: number;
+  positive_pct: number;
+  neutral_pct: number;
+  negative_pct: number;
+  average_sentiment_score: number;
+}
+
+// Global Search & Command Center Types
+export type SearchCategory =
+  | "ALL"
+  | "STOCKS"
+  | "COMPANIES"
+  | "INDICES"
+  | "SECTORS"
+  | "NEWS"
+  | "RESEARCH"
+  | "ANOMALIES"
+  | "PORTFOLIO"
+  | "ACTIONS";
+
+export interface StockSearchResult {
+  type: "STOCK";
+  ticker: string;
+  name: string;
+  exchange: string;
+  sector?: string;
+  price?: number;
+  change_pct?: number;
+  url: string;
+  is_demo?: boolean;
+}
+
+export interface NewsSearchResult {
+  type: "NEWS";
+  id: string;
+  title: string;
+  source: string;
+  time: string;
+  sentiment: string;
+  ticker?: string;
+  url: string;
+}
+
+export interface AnomalySearchResult {
+  type: "ANOMALY";
+  id: string;
+  ticker: string;
+  anomaly_type: string;
+  severity: AnomalySeverity;
+  time: string;
+  url: string;
+}
+
+export interface ResearchSearchResult {
+  type: "RESEARCH";
+  id: string;
+  query: string;
+  ticker?: string;
+  timestamp: string;
+  url: string;
+}
+
+export interface PortfolioSearchResult {
+  type: "PORTFOLIO";
+  ticker: string;
+  shares: number;
+  value: number;
+  pnl_pct: number;
+  url: string;
+}
+
+export interface ActionSearchResult {
+  type: "ACTION";
+  label: string;
+  description: string;
+  iconName: string;
+  url: string;
+  category: string;
+}
+
+export type GlobalSearchResultItem =
+  | StockSearchResult
+  | NewsSearchResult
+  | AnomalySearchResult
+  | ResearchSearchResult
+  | PortfolioSearchResult
+  | ActionSearchResult;
+
 
 
 // Anomaly Detection Types
