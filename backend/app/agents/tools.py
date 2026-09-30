@@ -128,10 +128,103 @@ async def tool_get_financial_statements(
 
 
 # 4. News & Sentiment Tool
-async def tool_get_news(ticker: str, limit: int = 5) -> Dict[str, Any]:
+async def tool_get_news(ticker: str, limit: int = 5) -> List[Dict[str, Any]]:
     """Fetches recent financial news headlines and sentiment analysis."""
-    news_provider = get_news_provider()
+    news_provider = get_news_provider(ticker)
     return await news_provider.get_news_for_ticker(ticker, limit=limit)
+
+
+# 4b. Structured AI News Context Tool (Distinguishes FACT, CLASSIFICATION, ANALYSIS, UNKNOWN)
+async def tool_get_news_context(ticker: str, limit: int = 5) -> Dict[str, Any]:
+    """
+    Retrieves rich factual news context separating:
+    - FACTS: reported headlines, publication timestamps, sources, verified URLs
+    - CLASSIFICATION: event types (EARNINGS, M_AND_A, etc.) and category labels
+    - ANALYSIS: computed sentiment polarity scores (-1.0 to 1.0) and estimated impact horizons
+    - PROVENANCE: feed source and verification status (DEMO/LIVE)
+    """
+    from app.services.news_service import news_service
+    data = await news_service.get_news_for_ticker(ticker, limit=limit)
+    items = data.get("news_items", [])
+
+    facts = [
+        {
+            "headline": i.get("headline") or i.get("title"),
+            "source": i.get("source"),
+            "published_at": i.get("published_at"),
+            "url": i.get("url"),
+        }
+        for i in items
+    ]
+
+    classifications = [
+        {
+            "headline": i.get("headline") or i.get("title"),
+            "category": i.get("category", "MARKET"),
+            "event_type": i.get("event_type", "OTHER"),
+        }
+        for i in items
+    ]
+
+    analysis = {
+        "overall_sentiment": data.get("overall_sentiment", "NEUTRAL"),
+        "average_sentiment_score": data.get("average_sentiment_score", 0.0),
+        "article_scores": [
+            {
+                "headline": i.get("headline") or i.get("title"),
+                "sentiment_label": i.get("sentiment_label", "NEUTRAL"),
+                "sentiment_score": i.get("sentiment_score", 0.0),
+                "impact_score": i.get("impact_score", 0.5),
+                "impact_horizon": i.get("impact_horizon", "SHORT_TERM"),
+            }
+            for i in items
+        ]
+    }
+
+    return {
+        "ticker": ticker,
+        "facts": facts,
+        "classifications": classifications,
+        "analysis": analysis,
+        "data_provenance": {
+            "source": items[0].get("data_source", "DEMO") if items else "DEMO",
+            "status": items[0].get("data_status", "DEMO") if items else "DEMO",
+        }
+    }
+
+
+# 4c. Structured AI News Brief Tool
+async def tool_get_ai_news_brief(ticker: str) -> Dict[str, Any]:
+    """
+    Generates a structured factual executive summary for research:
+    - Market Context
+    - Key Company Developments
+    - Potential Catalysts & Risks
+    - Document & News Citations
+    """
+    context = await tool_get_news_context(ticker, limit=5)
+    facts = context.get("facts", [])
+    analysis = context.get("analysis", {})
+
+    catalysts = []
+    risks = []
+    for art in analysis.get("article_scores", []):
+        score = art.get("sentiment_score", 0.0)
+        if score > 0.20:
+            catalysts.append(f"Positive momentum: {art.get('headline')} (Score: +{score:.2f})")
+        elif score < -0.20:
+            risks.append(f"Downside headwind: {art.get('headline')} (Score: {score:.2f})")
+
+    return {
+        "ticker": ticker,
+        "market_context": f"Active coverage for {ticker} across recent financial intelligence dispatches.",
+        "key_company_news": [f["headline"] for f in facts[:3]],
+        "potential_catalysts": catalysts or ["No immediate positive catalysts detected in recent headlines."],
+        "potential_risks": risks or ["No acute downside risk warnings detected in current feed."],
+        "overall_sentiment_bias": analysis.get("overall_sentiment", "NEUTRAL"),
+        "citations": [f["source"] for f in facts if f.get("source")]
+    }
+
 
 
 # 5. Technical Indicators Tool

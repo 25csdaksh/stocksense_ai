@@ -167,18 +167,30 @@ export interface NewsArticle {
   id: string;
   ticker?: string;
   title: string;
+  headline?: string;
   summary: string;
+  content?: string;
   source: string;
   url?: string;
   published_at: string;
   sentiment_score: number; // -1.0 to 1.0
   sentiment_label: 'POSITIVE' | 'NEUTRAL' | 'NEGATIVE' | 'BULLISH' | 'BEARISH';
   related_tickers?: string[];
+  symbols?: string[];
   impact_score?: number;
+  impact_direction?: string;
+  impact_horizon?: string;
+  impact_scope?: string;
+  relevance_score?: number;
+  category?: string;
+  event_type?: string;
   sector?: string;
-  market?: 'INDIA' | 'GLOBAL';
+  market?: 'INDIA' | 'GLOBAL' | 'US';
   is_market_moving?: boolean;
+  data_source?: string;
+  data_status?: string;
 }
+
 
 export interface NewsSentimentSummary {
   ticker: string;

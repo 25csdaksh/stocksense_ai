@@ -33,6 +33,7 @@ class ChannelType(str, Enum):
     ANOMALIES = "anomalies"
     MARKET_STATUS = "market_status"
     INGESTION = "ingestion"
+    NEWS = "news"
     PORTFOLIO = "portfolio"  # Protected private channel (requires auth)
 
 
@@ -42,6 +43,7 @@ APPROVED_PUBLIC_CHANNELS: Set[str] = {
     ChannelType.ANOMALIES.value,
     ChannelType.MARKET_STATUS.value,
     ChannelType.INGESTION.value,
+    ChannelType.NEWS.value,
 }
 
 PROTECTED_CHANNELS: Set[str] = {
@@ -52,11 +54,13 @@ PROTECTED_CHANNELS: Set[str] = {
 EVENT_PRIORITY = {
     MarketEventType.SESSION_CHANGE: 3,     # Highest: must not drop
     MarketEventType.ANOMALY_DETECTED: 3,   # Highest: alert criticality
+    MarketEventType.NEWS_PUBLISHED: 2,     # High/Normal: market news
     MarketEventType.INDEX_TICK: 2,         # Normal
     MarketEventType.QUOTE_TICK: 2,         # Normal
     MarketEventType.BAR_CLOSED: 2,         # Normal
     MarketEventType.INGESTION_CYCLE_COMPLETED: 1  # Lower: telemetry
 }
+
 
 
 class WebSocketConnection:
@@ -525,8 +529,10 @@ class WebSocketManager:
             MarketEventType.ANOMALY_DETECTED: ChannelType.ANOMALIES.value,
             MarketEventType.SESSION_CHANGE: ChannelType.MARKET_STATUS.value,
             MarketEventType.INGESTION_CYCLE_COMPLETED: ChannelType.INGESTION.value,
+            MarketEventType.NEWS_PUBLISHED: ChannelType.NEWS.value,
         }
         return mapping.get(event_type)
+
 
     def _normalize_outgoing_event(self, event: MarketDataEvent) -> Dict[str, Any]:
         """
