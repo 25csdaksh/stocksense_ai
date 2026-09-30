@@ -24,11 +24,16 @@ class MarketCacheContract:
     TTL_INDEX = 15
     TTL_SESSION = 60
     TTL_HEALTH = 30
+    TTL_INSTRUMENT = 86400  # 24 hours for instrument master & tokens
 
     @staticmethod
     def quote_key(symbol: str) -> str:
         norm = normalize_symbol(symbol)
         return f"market:quote:{norm.canonical_symbol}"
+
+    @staticmethod
+    def instrument_key(exchange: str, tradingsymbol: str) -> str:
+        return f"market:instrument:{exchange.strip().upper()}:{tradingsymbol.strip().upper()}"
 
     @staticmethod
     def history_key(symbol: str, timeframe: str = "6m", interval: str = "1d") -> str:
@@ -105,6 +110,27 @@ class MarketCacheContract:
     ) -> bool:
         key = cls.session_key(exchange_or_market)
         return await cache_client.set_json(key, status_data, expire=ttl or cls.TTL_SESSION)
+
+    @classmethod
+    async def get_instrument_token(cls, exchange: str, tradingsymbol: str) -> Optional[int]:
+        key = cls.instrument_key(exchange, tradingsymbol)
+        data = await cache_client.get_json(key)
+        if data and isinstance(data, dict) and "token" in data:
+            return data["token"]
+        elif isinstance(data, int):
+            return data
+        return None
+
+    @classmethod
+    async def set_instrument_token(
+        cls,
+        exchange: str,
+        tradingsymbol: str,
+        token: int,
+        ttl: Optional[int] = None
+    ) -> bool:
+        key = cls.instrument_key(exchange, tradingsymbol)
+        return await cache_client.set_json(key, {"token": token}, expire=ttl or cls.TTL_INSTRUMENT)
 
 
 market_cache = MarketCacheContract()

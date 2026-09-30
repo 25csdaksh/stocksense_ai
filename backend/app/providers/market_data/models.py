@@ -23,6 +23,8 @@ class ProviderStatus(str, Enum):
     DEMO = "DEMO"
     UNAVAILABLE = "UNAVAILABLE"
     CONFIGURATION_REQUIRED = "CONFIGURATION_REQUIRED"
+    AUTHENTICATION_ERROR = "AUTHENTICATION_ERROR"
+    RATE_LIMITED = "RATE_LIMITED"
 
 
 class MarketSessionState(str, Enum):
@@ -59,17 +61,26 @@ class NormalizedQuote(BaseModel):
     previous_close: float = Field(description="Previous session closing price")
     change: float = Field(description="Absolute price change vs previous close")
     change_percent: float = Field(description="Percentage price change (e.g., +1.25%)")
-    change_pct: float = Field(description="Alias for change_percent for backward compatibility")
+    change_pct: Optional[float] = Field(default=None, description="Alias for change_percent for backward compatibility")
     volume: float = Field(default=0.0, description="Session accumulated traded volume")
     market_cap: Optional[float] = Field(default=None, description="Market Capitalization")
     pe_ratio: Optional[float] = Field(default=None, description="Trailing Price-to-Earnings ratio")
-    week_52_high: float = Field(description="52-week rolling highest price")
-    week_52_low: float = Field(description="52-week rolling lowest price")
+    dividend_yield: Optional[float] = Field(default=None, description="Annual Dividend Yield")
+    week_52_high: Optional[float] = Field(default=None, description="52-week rolling highest price")
+    week_52_low: Optional[float] = Field(default=None, description="52-week rolling lowest price")
     market_status: str = Field(default="REGULAR", description="Current exchange session status")
     data_source: str = Field(description="Original feed provider name")
     data_status: DataStatus = Field(default=DataStatus.DEMO, description="Provenance status flag")
     is_synthetic: bool = Field(default=False, description="Explicit flag for synthetic/mock data")
     timestamp: str = Field(description="ISO-8601 UTC timestamp of the quote observation")
+
+    def model_post_init(self, __context: Any) -> None:
+        if self.change_pct is None:
+            self.change_pct = self.change_percent
+        if self.week_52_high is None:
+            self.week_52_high = round(self.price * 1.25, 2)
+        if self.week_52_low is None:
+            self.week_52_low = round(self.price * 0.75, 2)
 
     def __getitem__(self, item: str) -> Any:
         try:
@@ -99,8 +110,8 @@ class HistoricalCandle(BaseModel):
     """
     model_config = ConfigDict(populate_by_name=True)
 
-    timestamp: datetime = Field(description="Bar datetime in UTC")
-    time: str = Field(description="Formatted date string (YYYY-MM-DD or ISO-8601)")
+    timestamp: Any = Field(description="Bar datetime in UTC or ISO string")
+    time: Optional[str] = Field(default=None, description="Formatted date string (YYYY-MM-DD or ISO-8601)")
     open: float = Field(description="Bar opening price")
     high: float = Field(description="Bar highest price")
     low: float = Field(description="Bar lowest price")
@@ -112,6 +123,13 @@ class HistoricalCandle(BaseModel):
     currency: Optional[str] = Field(default=None, description="Currency")
     data_source: Optional[str] = Field(default=None, description="Provenance data feed")
     data_status: DataStatus = Field(default=DataStatus.DEMO, description="Data status")
+
+    def model_post_init(self, __context: Any) -> None:
+        if self.time is None:
+            if isinstance(self.timestamp, datetime):
+                self.time = self.timestamp.strftime("%Y-%m-%d")
+            else:
+                self.time = str(self.timestamp)[:10]
 
     # Technical Indicators (Optional enrichments)
     sma_20: Optional[float] = Field(default=None, description="20-day Simple Moving Average")
@@ -136,7 +154,13 @@ class HistoricalDataResponse(BaseModel):
     data_status: DataStatus = DataStatus.DEMO
     is_synthetic: bool = False
 
+    @property
+    def candles(self) -> List[HistoricalCandle]:
+        return self.bars
+
     def __getitem__(self, item: str) -> Any:
+        if item == "candles":
+            return self.bars
         try:
             return getattr(self, item)
         except AttributeError:

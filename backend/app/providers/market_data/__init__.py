@@ -21,6 +21,7 @@ from app.providers.market_data.exceptions import (
     MarketDataException,
     ProviderNotConfigured,
     ProviderUnavailable,
+    ProviderAuthenticationFailed,
     SymbolNotFound,
     RateLimitExceeded,
     MarketDataTimeout,
@@ -43,8 +44,8 @@ from app.providers.market_data.observability import log_market_data_operation, s
 from app.providers.market_data.indian_market_provider import IndianMarketDataProvider, indian_market_provider
 from app.providers.market_data.us_market_provider import USMarketProvider, us_market_provider
 from app.providers.market_data.demo_provider import DemoMarketProvider, demo_market_provider
+from app.providers.market_data.zerodha_provider import ZerodhaMarketProvider, zerodha_market_provider
 from app.providers.market_data.broker_stubs import (
-    ZerodhaMarketProvider,
     UpstoxMarketProvider,
     AngelOneMarketProvider
 )
@@ -73,6 +74,7 @@ __all__ = [
     "MarketDataException",
     "ProviderNotConfigured",
     "ProviderUnavailable",
+    "ProviderAuthenticationFailed",
     "SymbolNotFound",
     "RateLimitExceeded",
     "MarketDataTimeout",
@@ -107,6 +109,7 @@ __all__ = [
     "DemoMarketProvider",
     "demo_market_provider",
     "ZerodhaMarketProvider",
+    "zerodha_market_provider",
     "UpstoxMarketProvider",
     "AngelOneMarketProvider",
     # Factory

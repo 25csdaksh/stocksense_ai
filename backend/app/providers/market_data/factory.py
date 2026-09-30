@@ -8,8 +8,8 @@ from app.providers.market_data.base import MarketDataProvider
 from app.providers.market_data.indian_market_provider import IndianMarketDataProvider, indian_market_provider
 from app.providers.market_data.us_market_provider import USMarketProvider, us_market_provider
 from app.providers.market_data.demo_provider import DemoMarketProvider, demo_market_provider
+from app.providers.market_data.zerodha_provider import ZerodhaMarketProvider, zerodha_market_provider
 from app.providers.market_data.broker_stubs import (
-    ZerodhaMarketProvider,
     UpstoxMarketProvider,
     AngelOneMarketProvider
 )

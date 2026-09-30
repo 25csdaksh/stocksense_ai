@@ -12,6 +12,7 @@ from app.providers.market_data.exceptions import (
     InvalidSymbol,
     SymbolNotFound,
     ProviderNotConfigured,
+    ProviderAuthenticationFailed,
     DataValidationError,
     RateLimitExceeded
 )
@@ -24,6 +25,7 @@ NON_RETRYABLE_EXCEPTIONS: Tuple[type, ...] = (
     InvalidSymbol,
     SymbolNotFound,
     ProviderNotConfigured,
+    ProviderAuthenticationFailed,
     DataValidationError,
     RateLimitExceeded,
     ValueError,

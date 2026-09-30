@@ -97,3 +97,18 @@ class DataValidationError(MarketDataException):
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             details={"validation_error": message, "record": record or {}}
         )
+
+
+class ProviderAuthenticationFailed(MarketDataException):
+    """Raised when broker credentials (API key, access token) are invalid, expired, or rejected."""
+    def __init__(self, provider_name: str, reason: str = "Invalid or expired access token"):
+        super().__init__(
+            message=f"Authentication failed for provider '{provider_name}': {reason}",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            details={
+                "provider": provider_name,
+                "status": "AUTHENTICATION_ERROR",
+                "reason": reason
+            }
+        )
+
