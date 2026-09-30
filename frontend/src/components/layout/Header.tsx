@@ -2,10 +2,14 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+
 import { useAuth } from "@/hooks/useAuth";
+import { useMarketIndices } from "@/hooks/useMarketIndices";
 import { Button } from "@/components/common/Button";
 import { Dropdown } from "@/components/common/Dropdown";
 import { GlobalSearch } from "@/components/navigation/GlobalSearch";
+import { RealtimeStatusIndicator } from "@/components/common/RealtimeStatusIndicator";
+import { formatNumber, formatPercent } from "@/lib/utils";
 import { Search, Menu, User as UserIcon, LogOut, ShieldCheck, ChevronDown, Activity } from "lucide-react";
 
 export interface HeaderProps {
@@ -14,14 +18,16 @@ export interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onToggleMobileSidebar }) => {
   const { user, isAuthenticated, logout } = useAuth();
+  const { indices } = useMarketIndices();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  // Fallback indices preview
-  const liveIndices = [
-    { label: "NIFTY 50", value: "24,836.10", change: "+0.45%", isUp: true },
-    { label: "SENSEX", value: "81,332.72", change: "+0.38%", isUp: true },
-    { label: "NIFTY BANK", value: "51,215.30", change: "-0.12%", isUp: false },
-  ];
+  // Derive preview indices from real-time hook with fallback
+  const displayIndices = indices.slice(0, 3).map((idx) => ({
+    label: idx.name || idx.symbol,
+    value: formatNumber(idx.price),
+    change: `${idx.change_pct >= 0 ? "+" : ""}${formatPercent(idx.change_pct)}`,
+    isUp: idx.change >= 0,
+  }));
 
   const profileDropdownItems = [
     {
@@ -61,13 +67,10 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileSidebar }) => {
 
           {/* Real-time Market Status Ticker */}
           <div className="hidden lg:flex items-center gap-4 text-xs font-semibold">
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-financial-gain-bg border border-financial-gain/20 text-financial-gain">
-              <Activity className="w-3.5 h-3.5 animate-pulse" />
-              <span className="text-[11px] font-bold">NSE / BSE LIVE</span>
-            </div>
+            <RealtimeStatusIndicator />
 
             <div className="flex items-center gap-3">
-              {liveIndices.map((idx) => (
+              {displayIndices.map((idx) => (
                 <div key={idx.label} className="flex items-center gap-1.5 font-tabular">
                   <span className="text-content-muted text-[11px]">{idx.label}</span>
                   <span className="text-content font-bold text-xs">{idx.value}</span>
@@ -83,6 +86,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileSidebar }) => {
             </div>
           </div>
         </div>
+
 
         {/* Center: Global Search Trigger Button */}
         <div className="flex-1 max-w-md">

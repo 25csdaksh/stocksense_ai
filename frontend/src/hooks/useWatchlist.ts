@@ -1,7 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useSyncExternalStore } from "react";
 import { watchlistApi } from "@/lib/api/watchlist";
+import { useMarketWebSocket } from "@/providers/MarketWebSocketProvider";
+import { marketStore } from "@/lib/realtime/marketStore";
+import { normalizeSymbol } from "@/lib/realtime/symbolNormalizer";
 
 export interface WatchlistDisplayItem {
   ticker: string;
@@ -62,11 +66,21 @@ const FALLBACK_WATCHLIST: WatchlistDisplayItem[] = [
 ];
 
 export function useWatchlist() {
-  const [watchlist, setWatchlist] = useState<WatchlistDisplayItem[]>([]);
+  const [baseWatchlist, setBaseWatchlist] = useState<WatchlistDisplayItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isError, setIsError] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isDemo, setIsDemo] = useState<boolean>(false);
+
+  const { subscribeSymbol, unsubscribeSymbol } = useMarketWebSocket();
+  const subscribedSymbolsRef = useRef<Set<string>>(new Set());
+
+  // Listen to realtime quotes store
+  const realtimeQuotes = useSyncExternalStore(
+    marketStore.subscribe,
+    () => marketStore.getSnapshot().quotes,
+    () => marketStore.getSnapshot().quotes
+  );
 
   const fetchWatchlist = useCallback(async () => {
     setIsLoading(true);
@@ -84,19 +98,81 @@ export function useWatchlist() {
           volume: item.volume || 0,
           status: item.change_pct > 1 ? "ACTIVE" : item.change_pct < -1 ? "ALERT" : "NEUTRAL",
         }));
-        setWatchlist(formatted);
+        setBaseWatchlist(formatted);
         setIsDemo(false);
       } else {
-        setWatchlist(FALLBACK_WATCHLIST);
+        setBaseWatchlist(FALLBACK_WATCHLIST);
         setIsDemo(true);
       }
     } catch {
-      setWatchlist(FALLBACK_WATCHLIST);
+      setBaseWatchlist(FALLBACK_WATCHLIST);
       setIsDemo(true);
     } finally {
       setIsLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    fetchWatchlist();
+  }, [fetchWatchlist]);
+
+  // Synchronize WebSocket symbol subscriptions with active watchlist items
+  useEffect(() => {
+    const currentTickers = new Set(
+      baseWatchlist.map((item) => normalizeSymbol(item.ticker)).filter(Boolean)
+    );
+
+    // Subscribe new tickers
+    currentTickers.forEach((sym) => {
+      if (!subscribedSymbolsRef.current.has(sym)) {
+        subscribeSymbol(sym);
+        subscribedSymbolsRef.current.add(sym);
+      }
+    });
+
+    // Unsubscribe removed tickers
+    subscribedSymbolsRef.current.forEach((sym) => {
+      if (!currentTickers.has(sym)) {
+        unsubscribeSymbol(sym);
+        subscribedSymbolsRef.current.delete(sym);
+      }
+    });
+  }, [baseWatchlist, subscribeSymbol, unsubscribeSymbol]);
+
+  // Cleanup all subscriptions on unmount
+  useEffect(() => {
+    const active = subscribedSymbolsRef.current;
+    return () => {
+      active.forEach((sym) => {
+        unsubscribeSymbol(sym);
+      });
+      active.clear();
+    };
+  }, [unsubscribeSymbol]);
+
+  // Merge real-time WebSocket ticks dynamically
+  const mergedWatchlist = useMemo(() => {
+    const list = baseWatchlist.length > 0 ? baseWatchlist : FALLBACK_WATCHLIST;
+    return list.map((item) => {
+      const canonical = normalizeSymbol(item.ticker);
+      const rt = realtimeQuotes[canonical] || realtimeQuotes[item.ticker];
+      if (!rt) return item;
+
+      return {
+        ...item,
+        price: rt.price,
+        change: rt.change,
+        change_pct: rt.changePercent,
+        volume: rt.volume !== undefined ? rt.volume : item.volume,
+        status:
+          rt.changePercent > 1
+            ? "ACTIVE"
+            : rt.changePercent < -1
+            ? "ALERT"
+            : "NEUTRAL",
+      };
+    });
+  }, [baseWatchlist, realtimeQuotes]);
 
   const addToWatchlist = async (ticker: string) => {
     try {
@@ -110,18 +186,14 @@ export function useWatchlist() {
   const removeFromWatchlist = async (ticker: string) => {
     try {
       await watchlistApi.removeFromWatchlist(ticker);
-      setWatchlist((prev) => prev.filter((item) => item.ticker !== ticker));
+      setBaseWatchlist((prev) => prev.filter((item) => item.ticker !== ticker));
     } catch (err: any) {
       console.error("Failed to remove from watchlist:", err);
     }
   };
 
-  useEffect(() => {
-    fetchWatchlist();
-  }, [fetchWatchlist]);
-
   return {
-    watchlist,
+    watchlist: mergedWatchlist,
     isLoading,
     isError,
     error,

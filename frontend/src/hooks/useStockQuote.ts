@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { stocksApi } from "@/lib/api/stocks";
 import { watchlistApi } from "@/lib/api/watchlist";
 import { StockQuote } from "@/types";
+import { useMarketWebSocket } from "@/providers/MarketWebSocketProvider";
+import { useRealtimeQuote } from "./useRealtimeSelectors";
+import { normalizeSymbol } from "@/lib/realtime/symbolNormalizer";
 
 export interface StockQuoteState {
   quote: StockQuote | null;
@@ -12,6 +15,7 @@ export interface StockQuoteState {
   isError: boolean;
   error: string | null;
   isDemo: boolean;
+  isRealtime: boolean;
   toggleWatchlist: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -85,12 +89,25 @@ const FALLBACK_QUOTES: Record<string, Partial<StockQuote>> = {
 };
 
 export function useStockQuote(ticker: string): StockQuoteState {
-  const [quote, setQuote] = useState<StockQuote | null>(null);
+  const [baseQuote, setBaseQuote] = useState<StockQuote | null>(null);
   const [isInWatchlist, setIsInWatchlist] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isError, setIsError] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isDemo, setIsDemo] = useState<boolean>(false);
+
+  const { subscribeSymbol, unsubscribeSymbol } = useMarketWebSocket();
+  const canonicalTicker = useMemo(() => normalizeSymbol(ticker), [ticker]);
+  const realtimeTick = useRealtimeQuote(canonicalTicker);
+
+  // Subscribe to ticker on mount, unsubscribe on unmount
+  useEffect(() => {
+    if (!canonicalTicker) return;
+    subscribeSymbol(canonicalTicker);
+    return () => {
+      unsubscribeSymbol(canonicalTicker);
+    };
+  }, [canonicalTicker, subscribeSymbol, unsubscribeSymbol]);
 
   const fetchQuoteAndWatchlist = useCallback(async () => {
     if (!ticker) return;
@@ -105,10 +122,10 @@ export function useStockQuote(ticker: string): StockQuoteState {
       ]);
 
       if (quoteData && quoteData.price) {
-        setQuote(quoteData);
+        setBaseQuote(quoteData);
         setIsDemo(Boolean(quoteData.is_synthetic || quoteData.is_demo));
       } else {
-        const fallback = FALLBACK_QUOTES[ticker] || {
+        const fallback = FALLBACK_QUOTES[canonicalTicker] || FALLBACK_QUOTES[ticker] || {
           ticker,
           name: ticker,
           price: 2450.0,
@@ -122,7 +139,7 @@ export function useStockQuote(ticker: string): StockQuoteState {
           week_52_high: 2800.0,
           week_52_low: 1900.0,
         };
-        setQuote(fallback as StockQuote);
+        setBaseQuote(fallback as StockQuote);
         setIsDemo(true);
       }
 
@@ -130,7 +147,7 @@ export function useStockQuote(ticker: string): StockQuoteState {
       setIsInWatchlist(inWatch);
     } catch (err: any) {
       console.warn(`Quote API failed for ${ticker}, using fallback:`, err.message);
-      const fallback = FALLBACK_QUOTES[ticker] || {
+      const fallback = FALLBACK_QUOTES[canonicalTicker] || FALLBACK_QUOTES[ticker] || {
         ticker,
         name: ticker,
         price: 2450.0,
@@ -144,12 +161,12 @@ export function useStockQuote(ticker: string): StockQuoteState {
         week_52_high: 2800.0,
         week_52_low: 1900.0,
       };
-      setQuote(fallback as StockQuote);
+      setBaseQuote(fallback as StockQuote);
       setIsDemo(true);
     } finally {
       setIsLoading(false);
     }
-  }, [ticker]);
+  }, [ticker, canonicalTicker]);
 
   const toggleWatchlist = async () => {
     if (!ticker) return;
@@ -172,13 +189,46 @@ export function useStockQuote(ticker: string): StockQuoteState {
     fetchQuoteAndWatchlist();
   }, [fetchQuoteAndWatchlist]);
 
+  // Merge real-time WebSocket tick over base REST quote
+  const mergedQuote = useMemo(() => {
+    if (!baseQuote && !realtimeTick) return null;
+    if (!realtimeTick) return baseQuote;
+
+    const base = baseQuote || {
+      ticker: canonicalTicker,
+      name: canonicalTicker,
+      open: realtimeTick.price,
+      high: realtimeTick.dayHigh || realtimeTick.price,
+      low: realtimeTick.dayLow || realtimeTick.price,
+      previous_close: realtimeTick.price - realtimeTick.change,
+    };
+
+    return {
+      ...base,
+      price: realtimeTick.price,
+      change: realtimeTick.change,
+      change_pct: realtimeTick.changePercent,
+      change_percent: realtimeTick.changePercent,
+      volume: realtimeTick.volume !== undefined ? realtimeTick.volume : base.volume,
+      high: realtimeTick.dayHigh !== undefined ? Math.max(base.high || 0, realtimeTick.dayHigh) : base.high,
+      low: realtimeTick.dayLow !== undefined ? Math.min(base.low || Infinity, realtimeTick.dayLow) : base.low,
+      timestamp: realtimeTick.timestamp,
+      is_demo: realtimeTick.dataStatus !== "LIVE",
+    } as StockQuote;
+  }, [baseQuote, realtimeTick, canonicalTicker]);
+
+  const isActuallyDemo = realtimeTick
+    ? realtimeTick.dataStatus !== "LIVE"
+    : isDemo;
+
   return {
-    quote,
+    quote: mergedQuote,
     isInWatchlist,
     isLoading,
     isError,
     error,
-    isDemo,
+    isDemo: isActuallyDemo,
+    isRealtime: Boolean(realtimeTick),
     toggleWatchlist,
     refresh: fetchQuoteAndWatchlist,
   };

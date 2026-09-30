@@ -7,6 +7,8 @@ import { Badge } from "@/components/common/Badge";
 import { Button } from "@/components/common/Button";
 import { Skeleton } from "@/components/common/Skeleton";
 import { ErrorState } from "@/components/common/ErrorState";
+import { MarketStatusIndicator } from "@/components/common/MarketStatusIndicator";
+import { RealtimeStatusIndicator } from "@/components/common/RealtimeStatusIndicator";
 import { formatNumber, formatPercent } from "@/lib/utils";
 import { TrendingUp, TrendingDown, RefreshCw, Activity } from "lucide-react";
 
@@ -43,21 +45,15 @@ export const MarketIndicesSection: React.FC = () => {
             <Activity className="w-4 h-4 text-primary" />
             Market Benchmarks
           </h2>
-          <span className="flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded-full bg-gain/10 text-gain">
-            <span className="w-1.5 h-1.5 rounded-full bg-gain animate-pulse" />
-            {marketStatus?.is_open !== false ? "NSE/BSE Open" : "Market Closed"}
-          </span>
-          {isDemo && (
-            <Badge variant="gold" size="sm">
-              DEMO DATA
-            </Badge>
-          )}
+          <MarketStatusIndicator exchange="NSE" fallbackIsOpen={marketStatus?.is_open !== false} />
+          <RealtimeStatusIndicator compact />
         </div>
 
         <div className="flex items-center gap-2 text-xs text-content-muted">
           {lastUpdated && (
             <span>Updated {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
           )}
+
           <Button
             variant="ghost"
             size="sm"

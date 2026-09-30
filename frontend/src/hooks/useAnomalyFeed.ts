@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { analyticsApi } from "@/lib/api/analytics";
-import { AnomalyItem, AnomalySeverity, AnomalyType } from "@/types";
+import { AnomalyItem, AnomalySeverity } from "@/types";
+import { useMarketWebSocket } from "@/providers/MarketWebSocketProvider";
+import { useRealtimeAnomalies } from "./useRealtimeSelectors";
 
 export interface EnrichedAnomalyItem extends AnomalyItem {
   id: string;
@@ -127,7 +129,7 @@ const FALLBACK_STREAM: EnrichedAnomalyItem[] = [
 ];
 
 export function useAnomalyFeed() {
-  const [rawAnomalies, setRawAnomalies] = useState<EnrichedAnomalyItem[]>(FALLBACK_STREAM);
+  const [baseAnomalies, setBaseAnomalies] = useState<EnrichedAnomalyItem[]>(FALLBACK_STREAM);
   const [systemicStressIndex, setSystemicStressIndex] = useState<number>(24.8);
   const [totalActiveCount, setTotalActiveCount] = useState<number>(5);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -135,6 +137,17 @@ export function useAnomalyFeed() {
   const [error, setError] = useState<string | null>(null);
   const [isDemo, setIsDemo] = useState<boolean>(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+
+  const { subscribeChannel, unsubscribeChannel } = useMarketWebSocket();
+  const realtimeAnomalies = useRealtimeAnomalies(30);
+
+  // Subscribe to 'anomalies' channel
+  useEffect(() => {
+    subscribeChannel("anomalies");
+    return () => {
+      unsubscribeChannel("anomalies");
+    };
+  }, [subscribeChannel, unsubscribeChannel]);
 
   // Filter States
   const [severityFilter, setSeverityFilter] = useState<string>("ALL");
@@ -178,19 +191,19 @@ export function useAnomalyFeed() {
           };
         });
 
-        setRawAnomalies(enriched);
+        setBaseAnomalies(enriched);
         setTotalActiveCount(data.total_active || enriched.length);
         setSystemicStressIndex(data.systemic_stress_index || 22.4);
         setIsDemo(false);
       } else {
-        setRawAnomalies(FALLBACK_STREAM);
+        setBaseAnomalies(FALLBACK_STREAM);
         setTotalActiveCount(FALLBACK_STREAM.length);
         setSystemicStressIndex(24.8);
         setIsDemo(true);
       }
       setLastUpdated(new Date());
     } catch {
-      setRawAnomalies(FALLBACK_STREAM);
+      setBaseAnomalies(FALLBACK_STREAM);
       setTotalActiveCount(FALLBACK_STREAM.length);
       setSystemicStressIndex(24.8);
       setIsDemo(true);
@@ -204,21 +217,63 @@ export function useAnomalyFeed() {
     fetchAnomalyStream();
   }, [fetchAnomalyStream]);
 
+  // Merge real-time WebSocket anomalies dynamically onto base list
+  const mergedAnomalies = useMemo(() => {
+    if (!realtimeAnomalies || realtimeAnomalies.length === 0) {
+      return baseAnomalies;
+    }
+
+    const seenIds = new Set<string>();
+    const result: EnrichedAnomalyItem[] = [];
+
+    // 1. Add fresh real-time anomalies first
+    realtimeAnomalies.forEach((rt) => {
+      if (!seenIds.has(rt.id)) {
+        seenIds.add(rt.id);
+        result.push({
+          id: rt.id,
+          ticker: rt.ticker,
+          company_name: TICKER_NAMES[rt.ticker] || rt.ticker,
+          timestamp: rt.timestamp,
+          formatted_time: formatTimeAgo(rt.timestamp),
+          anomaly_type: rt.anomaly_type,
+          severity: rt.severity,
+          severity_score: rt.severity_score,
+          isolation_score: -0.45,
+          z_score: Number((rt.severity_score * 4).toFixed(2)),
+          observed_value: `${(rt.severity_score * 100).toFixed(0)}% Intensity`,
+          expected_value: "Baseline Regime",
+          model_name: "GARCH + Isolation Engine",
+          status: "ACTIVE",
+          summary: rt.summary,
+          metrics: rt.metrics || {},
+        });
+      }
+    });
+
+    // 2. Append existing base anomalies
+    baseAnomalies.forEach((b) => {
+      if (!seenIds.has(b.id)) {
+        seenIds.add(b.id);
+        result.push(b);
+      }
+    });
+
+    return result;
+  }, [baseAnomalies, realtimeAnomalies]);
+
   // Filtered Anomalies
   const filteredAnomalies = useMemo(() => {
-    return rawAnomalies.filter((a) => {
-      // 1. Severity filter
+    return mergedAnomalies.filter((a) => {
       if (severityFilter !== "ALL" && a.severity !== severityFilter) {
         return false;
       }
-      // 2. Type filter
       if (typeFilter !== "ALL") {
         const typeStr = a.anomaly_type.toUpperCase();
         if (!typeStr.includes(typeFilter.toUpperCase())) {
           return false;
         }
       }
-      // 3. Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchesTicker = a.ticker.toLowerCase().includes(q);
@@ -230,29 +285,25 @@ export function useAnomalyFeed() {
       }
       return true;
     });
-  }, [rawAnomalies, severityFilter, typeFilter, searchQuery]);
+  }, [mergedAnomalies, severityFilter, typeFilter, searchQuery]);
 
   // Severity Distribution Breakdown
   const severityDistribution = useMemo(() => {
     const counts = { LOW: 0, MEDIUM: 0, HIGH: 0, CRITICAL: 0 };
-    rawAnomalies.forEach((a) => {
+    mergedAnomalies.forEach((a) => {
       if (counts[a.severity] !== undefined) {
         counts[a.severity]++;
       }
     });
     return counts;
-  }, [rawAnomalies]);
-
-  // Critical and High count
-  const criticalCount = severityDistribution.CRITICAL;
-  const highCount = severityDistribution.HIGH;
+  }, [mergedAnomalies]);
 
   return {
     anomalies: filteredAnomalies,
-    allAnomalies: rawAnomalies,
-    totalActiveCount,
-    criticalCount,
-    highCount,
+    allAnomalies: mergedAnomalies,
+    totalActiveCount: mergedAnomalies.length,
+    criticalCount: severityDistribution.CRITICAL,
+    highCount: severityDistribution.HIGH,
     systemicStressIndex,
     severityDistribution,
     isLoading,

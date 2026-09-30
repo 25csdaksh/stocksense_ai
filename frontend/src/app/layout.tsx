@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ToastProvider } from "@/components/common/Toast";
+import { MarketWebSocketProvider } from "@/providers/MarketWebSocketProvider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -31,11 +32,14 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
       <body className="bg-background text-content font-sans antialiased min-h-screen">
         <AuthProvider>
-          <ToastProvider>
-            {children}
-          </ToastProvider>
+          <MarketWebSocketProvider>
+            <ToastProvider>
+              {children}
+            </ToastProvider>
+          </MarketWebSocketProvider>
         </AuthProvider>
       </body>
     </html>
   );
 }
+

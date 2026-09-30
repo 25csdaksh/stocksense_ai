@@ -4,6 +4,8 @@ import React, { useState } from "react";
 import { StockQuote } from "@/types";
 import { Badge } from "@/components/common/Badge";
 import { Button } from "@/components/common/Button";
+import { RealtimeStatusIndicator } from "@/components/common/RealtimeStatusIndicator";
+import { MarketStatusIndicator } from "@/components/common/MarketStatusIndicator";
 import {
   Bookmark,
   BookmarkCheck,
@@ -46,21 +48,6 @@ export const StockHeader: React.FC<StockHeaderProps> = ({
   const [isWatchlistBusy, setIsWatchlistBusy] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Check market status based on Indian standard trading hours (09:15 to 15:30 IST, Mon-Fri)
-  const isMarketOpen = (() => {
-    const now = new Date();
-    // UTC offset for IST is +5.5 hours
-    const istOffset = 5.5 * 60 * 60 * 1000;
-    const istDate = new Date(now.getTime() + istOffset);
-    const day = istDate.getUTCDay(); // 0 = Sun, 6 = Sat
-    if (day === 0 || day === 6) return false;
-    const hours = istDate.getUTCHours();
-    const minutes = istDate.getUTCMinutes();
-    const timeInMinutes = hours * 60 + minutes;
-    // 9:15 is 555 min, 15:30 is 930 min
-    return timeInMinutes >= 555 && timeInMinutes <= 930;
-  })();
-
   const handleWatchlistClick = async () => {
     setIsWatchlistBusy(true);
     try {
@@ -99,29 +86,10 @@ export const StockHeader: React.FC<StockHeaderProps> = ({
               <Badge variant="primary" size="md">
                 {exchange}
               </Badge>
-              {isDemo && (
-                <Badge variant="gold" size="md">
-                  DEMO DATA
-                </Badge>
-              )}
-              {/* Market Status indicator */}
-              <div
-                className={cn(
-                  "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-wide border",
-                  isMarketOpen
-                    ? "bg-financial-gain-bg text-financial-gain border-financial-gain/20"
-                    : "bg-surface-subtle text-content-muted border-border"
-                )}
-              >
-                <span
-                  className={cn(
-                    "w-2 h-2 rounded-full",
-                    isMarketOpen ? "bg-financial-gain animate-pulse" : "bg-content-muted"
-                  )}
-                />
-                {isMarketOpen ? "MARKET OPEN" : "MARKET CLOSED"}
-              </div>
+              <MarketStatusIndicator exchange={exchange} />
+              <RealtimeStatusIndicator compact />
             </div>
+
 
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-content-muted font-medium">
               <span className="font-semibold text-content">{displayName}</span>

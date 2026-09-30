@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { marketApi } from "@/lib/api/market";
 import { MarketIndexItem, MarketStatus } from "@/types";
+import { useMarketWebSocket } from "@/providers/MarketWebSocketProvider";
+import { useRealtimeIndices, useRealtimeMarketStatus } from "./useRealtimeSelectors";
 
 export interface MarketIndicesState {
   indices: MarketIndexItem[];
@@ -48,13 +50,27 @@ const FALLBACK_INDICES: MarketIndexItem[] = [
 ];
 
 export function useMarketIndices(): MarketIndicesState {
-  const [indices, setIndices] = useState<MarketIndexItem[]>([]);
-  const [marketStatus, setMarketStatus] = useState<MarketStatus | null>(null);
+  const [baseIndices, setBaseIndices] = useState<MarketIndexItem[]>([]);
+  const [baseMarketStatus, setBaseMarketStatus] = useState<MarketStatus | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isError, setIsError] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isDemo, setIsDemo] = useState<boolean>(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  const { subscribeChannel, unsubscribeChannel } = useMarketWebSocket();
+  const realtimeIndices = useRealtimeIndices();
+  const realtimeNseStatus = useRealtimeMarketStatus("NSE");
+
+  // Subscribe to 'indices' and 'market_status' channels
+  useEffect(() => {
+    subscribeChannel("indices");
+    subscribeChannel("market_status");
+    return () => {
+      unsubscribeChannel("indices");
+      unsubscribeChannel("market_status");
+    };
+  }, [subscribeChannel, unsubscribeChannel]);
 
   const fetchIndices = useCallback(async () => {
     setIsLoading(true);
@@ -67,25 +83,25 @@ export function useMarketIndices(): MarketIndicesState {
       ]);
 
       if (indicesData && indicesData.length > 0) {
-        setIndices(indicesData);
+        setBaseIndices(indicesData);
         setIsDemo(false);
       } else {
-        setIndices(FALLBACK_INDICES);
+        setBaseIndices(FALLBACK_INDICES);
         setIsDemo(true);
       }
-      setMarketStatus(statusData);
+      setBaseMarketStatus(statusData);
       setLastUpdated(new Date());
     } catch (err: any) {
       console.warn("API unavailable, utilizing fallback benchmark seed data:", err.message);
-      setIndices(FALLBACK_INDICES);
-      setMarketStatus({
+      setBaseIndices(FALLBACK_INDICES);
+      setBaseMarketStatus({
         market: "NSE",
         is_open: true,
         timezone: "IST (UTC+5:30)",
         indices: [],
       });
       setIsDemo(true);
-      setIsError(false); // Graceful degradation to demo data
+      setIsError(false); // Graceful degradation
       setLastUpdated(new Date());
     } finally {
       setIsLoading(false);
@@ -96,9 +112,32 @@ export function useMarketIndices(): MarketIndicesState {
     fetchIndices();
   }, [fetchIndices]);
 
+  // Dynamically merge real-time index tick updates over base indices
+  const mergedIndices = useMemo(() => {
+    const list = baseIndices.length > 0 ? baseIndices : FALLBACK_INDICES;
+    return list.map((idx) => {
+      const rt = realtimeIndices[idx.symbol] || realtimeIndices[idx.name.toUpperCase()];
+      if (!rt) return idx;
+      return {
+        ...idx,
+        price: rt.price,
+        change: rt.change,
+        change_pct: rt.changePercent,
+      };
+    });
+  }, [baseIndices, realtimeIndices]);
+
+  const mergedMarketStatus = useMemo(() => {
+    if (!realtimeNseStatus) return baseMarketStatus;
+    return {
+      ...(baseMarketStatus || { market: "NSE", timezone: "IST (UTC+5:30)", indices: [] }),
+      is_open: realtimeNseStatus.isOpen,
+    };
+  }, [baseMarketStatus, realtimeNseStatus]);
+
   return {
-    indices,
-    marketStatus,
+    indices: mergedIndices,
+    marketStatus: mergedMarketStatus,
     isLoading,
     isError,
     error,
