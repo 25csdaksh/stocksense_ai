@@ -29,7 +29,10 @@ from app.api.routes import (
     research,
     ai,
     health,
-    websocket
+    websocket,
+    data_quality,
+    providers,
+    observability,
 )
 from app.services.websocket_manager import websocket_manager
 
@@ -86,10 +89,13 @@ api_v1_router.include_router(watchlist.router)
 api_v1_router.include_router(research.router)
 api_v1_router.include_router(ai.router)
 api_v1_router.include_router(websocket.router)
+api_v1_router.include_router(data_quality.router)
+api_v1_router.include_router(providers.router)
+api_v1_router.include_router(observability.router)
 
 # Mount Routers
 app.include_router(api_v1_router)
-app.include_router(health.router)  # Also expose /health at root
+app.include_router(health.router)  # Also expose /health and /ready at root
 
 
 

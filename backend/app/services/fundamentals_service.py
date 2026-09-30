@@ -74,7 +74,7 @@ class FundamentalsService:
             # Construct empty fallback with explicit UNAVAILABLE provenance
             data = FundamentalOverviewData(
                 symbol=canonical,
-                name=norm.tradingsymbol or canonical,
+                name=getattr(norm, "tradingsymbol", getattr(norm, "display_symbol", canonical)) or canonical,
                 sector="General",
                 exchange=norm.exchange or "NSE",
                 currency="INR" if norm.exchange in ["NSE", "BSE"] else "USD",
@@ -163,7 +163,7 @@ class FundamentalsService:
         try:
             norm = normalize_symbol(raw_symbol)
             canonical = norm.canonical_symbol
-            ticker_bare = norm.tradingsymbol or canonical.replace(".NS", "").replace(".BO", "")
+            ticker_bare = getattr(norm, "tradingsymbol", getattr(norm, "display_symbol", canonical)).replace(".NS", "").replace(".BO", "")
 
             comp_repo = CompanyRepository(session)
             fund_repo = FundamentalRepository(session)

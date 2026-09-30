@@ -13,6 +13,7 @@ import {
   Briefcase,
   Bookmark,
   Newspaper,
+  ShieldCheck,
   Settings,
   Sparkles,
 } from "lucide-react";
@@ -26,6 +27,7 @@ const NAV_ITEMS = [
   { label: "Portfolio", href: "/portfolio", icon: Briefcase },
   { label: "Watchlist", href: "/watchlist", icon: Bookmark },
   { label: "News Feed", href: "/news", icon: Newspaper },
+  { label: "Data Quality", href: "/data-quality", icon: ShieldCheck, badge: "Live" },
 ];
 
 const BOTTOM_ITEMS = [
