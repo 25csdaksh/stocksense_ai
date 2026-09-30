@@ -123,3 +123,11 @@ async def get_symbol_quality_report(
     )
     return report.model_dump()
 
+
+@router.get("/stream/health")
+async def get_market_stream_health():
+    """Returns streaming infrastructure health, active connections, and subscription metrics (Phase 6.4)."""
+    from app.services.websocket_manager import websocket_manager
+    return websocket_manager.get_health_metrics()
+
+

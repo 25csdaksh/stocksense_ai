@@ -28,8 +28,10 @@ from app.api.routes import (
     watchlist,
     research,
     ai,
-    health
+    health,
+    websocket
 )
+from app.services.websocket_manager import websocket_manager
 
 
 @asynccontextmanager
@@ -37,8 +39,10 @@ async def lifespan(app: FastAPI):
     """Application lifecycle hooks."""
     logger.info(f"Starting {settings.PROJECT_NAME} v{settings.VERSION} [{settings.ENVIRONMENT}]")
     await redis_client.connect()
+    websocket_manager.start()
     yield
     logger.info(f"Shutting down {settings.PROJECT_NAME}")
+    websocket_manager.stop()
     await redis_client.disconnect()
 
 
@@ -81,10 +85,12 @@ api_v1_router.include_router(portfolio.router)
 api_v1_router.include_router(watchlist.router)
 api_v1_router.include_router(research.router)
 api_v1_router.include_router(ai.router)
+api_v1_router.include_router(websocket.router)
 
 # Mount Routers
 app.include_router(api_v1_router)
 app.include_router(health.router)  # Also expose /health at root
+
 
 
 @app.get("/")

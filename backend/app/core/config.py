@@ -78,6 +78,15 @@ class Settings(BaseSettings):
     QDRANT_API_KEY: str = ""
     QDRANT_COLLECTION_NAME: str = "marketmind_sec_10k"
 
+    # WebSocket Real-Time Streaming Settings (Phase 6.4)
+    WS_MAX_CONNECTIONS: int = 1000
+    WS_MAX_SYMBOLS_PER_CLIENT: int = 50
+    WS_MAX_CHANNELS_PER_CLIENT: int = 10
+    WS_MAX_MESSAGE_SIZE: int = 65536  # 64 KB
+    WS_HEARTBEAT_TIMEOUT_SECONDS: int = 60
+    WS_QUEUE_MAX_SIZE: int = 100
+    WS_ENABLE_PUBLIC_UNAUTHENTICATED: bool = True
+
     @property
     def CORS_ORIGINS(self) -> List[str]:
         return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",") if origin.strip()]
@@ -88,3 +97,4 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+

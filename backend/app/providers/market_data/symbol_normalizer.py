@@ -253,3 +253,7 @@ def is_us_symbol(symbol: str) -> bool:
         return norm.market == "US"
     except Exception:
         return False
+
+
+symbol_normalizer = SymbolNormalizer()
+
