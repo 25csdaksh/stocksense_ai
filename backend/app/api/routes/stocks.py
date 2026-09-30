@@ -1,11 +1,12 @@
 """
 Stock Universe, Real-Time Quotes & Historical OHLCV Routes.
-Phase 6.1: Full support for US and Indian stock quotes, history, fundamentals, and company profile.
+Phase 6.6: Extended with multi-period financials, ratios, and company profile routing.
 """
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Query
 from app.schemas.stock import StockQuoteResponse, HistoricalOHLCVResponse
 from app.services.stock_service import stock_service
+from app.services.fundamentals_service import fundamentals_service
 
 router = APIRouter(prefix="/stocks", tags=["Stocks & OHLCV Data"])
 
@@ -46,11 +47,34 @@ async def get_stock_history(
 
 @router.get("/{symbol}/fundamentals")
 async def get_stock_fundamentals(symbol: str):
-    """Retrieves fundamental financial valuation metrics (PE, PB, Dividend Yield, Beta)."""
+    """Retrieves fundamental financial valuation metrics (PE, PB, Dividend Yield, Beta, Margins)."""
     return await stock_service.get_fundamentals(symbol)
 
 
 @router.get("/{symbol}/profile")
 async def get_stock_profile(symbol: str):
     """Retrieves company legal profile, sector, exchange, and business description."""
-    return await stock_service.get_company_profile(symbol)
+    return await fundamentals_service.get_company_profile(symbol)
+
+
+@router.get("/{symbol}/financials")
+async def get_stock_financials(
+    symbol: str,
+    statement_type: str = Query(default="income", description="Statement type: income, balance_sheet, cash_flow"),
+    period_type: str = Query(default="annual", description="Period granularity: annual, quarterly, ttm")
+):
+    """Retrieves normalized multi-period financial statements."""
+    return await fundamentals_service.get_statements(
+        symbol,
+        statement_type=statement_type,
+        period_type=period_type
+    )
+
+
+@router.get("/{symbol}/ratios")
+async def get_stock_ratios(
+    symbol: str,
+    market_cap: Optional[float] = Query(None, description="Optional override market capitalization")
+):
+    """Retrieves calculated valuation, profitability, leverage, liquidity, and efficiency ratios."""
+    return await fundamentals_service.get_ratios(symbol, market_cap=market_cap)

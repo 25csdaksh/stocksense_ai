@@ -374,34 +374,119 @@ export interface StockDNA {
 export interface FundamentalValuation {
   pe_ratio?: number | null;
   forward_pe?: number | null;
+  ps_ratio?: number | null;
   pb_ratio?: number | null;
   ev_ebitda?: number | null;
+  peg_ratio?: number | null;
   fcf_yield_pct?: number | null;
+  dividend_yield_pct?: number | null;
 }
 
 export interface FundamentalProfitability {
   gross_margin_pct?: number | null;
   operating_margin_pct?: number | null;
+  ebitda_margin_pct?: number | null;
   net_margin_pct?: number | null;
   roe_pct?: number | null;
   roa_pct?: number | null;
+  roic_pct?: number | null;
 }
 
 export interface FundamentalHealth {
   current_ratio?: number | null;
+  quick_ratio?: number | null;
   debt_to_equity?: number | null;
+  debt_to_assets?: number | null;
   interest_coverage_ratio?: number | null;
   altman_z_score?: number | null;
   health_score?: string;
 }
 
+export interface CompanyProfile {
+  ticker: string;
+  symbol?: string;
+  name: string;
+  legal_name?: string | null;
+  exchange: string;
+  isin?: string | null;
+  sector: string;
+  industry?: string | null;
+  country: string;
+  currency: string;
+  market_cap?: number | null;
+  description?: string | null;
+  website?: string | null;
+  employees?: number | null;
+  cik?: string | null;
+  data_source?: string;
+  data_status?: string;
+  updated_at?: string;
+}
+
+export interface FinancialStatementPeriod {
+  period: string;
+  period_type?: string;
+  fiscal_year?: number;
+  fiscal_quarter?: string;
+  revenue?: number | null;
+  cost_of_revenue?: number | null;
+  gross_profit?: number | null;
+  operating_expenses?: number | null;
+  operating_income?: number | null;
+  ebitda?: number | null;
+  ebit?: number | null;
+  interest_expense?: number | null;
+  tax_expense?: number | null;
+  net_income?: number | null;
+  eps?: number | null;
+  shares_outstanding?: number | null;
+  cash_and_equivalents?: number | null;
+  short_term_investments?: number | null;
+  receivables?: number | null;
+  inventory?: number | null;
+  total_current_assets?: number | null;
+  total_assets?: number | null;
+  current_liabilities?: number | null;
+  short_term_debt?: number | null;
+  long_term_debt?: number | null;
+  total_debt?: number | null;
+  total_liabilities?: number | null;
+  retained_earnings?: number | null;
+  total_equity?: number | null;
+  operating_cash_flow?: number | null;
+  capital_expenditures?: number | null;
+  free_cash_flow?: number | null;
+  investing_cash_flow?: number | null;
+  financing_cash_flow?: number | null;
+  dividends_paid?: number | null;
+  [key: string]: any;
+}
+
+export interface FinancialStatementsResponse {
+  ticker: string;
+  symbol?: string;
+  statement_type: string;
+  period_type?: string;
+  currency?: string;
+  periods: FinancialStatementPeriod[];
+  data_source?: string;
+  data_status?: string;
+  updated_at?: string;
+}
+
 export interface FundamentalOverviewResponse {
   ticker: string;
+  symbol?: string;
   name: string;
   sector: string;
+  exchange?: string;
+  currency?: string;
   valuation: FundamentalValuation;
   profitability: FundamentalProfitability;
   financial_health: FundamentalHealth;
+  data_source?: string;
+  data_status?: string;
+  updated_at?: string;
 }
 
 export interface TickerAnomalyResponse {
