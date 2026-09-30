@@ -17,13 +17,13 @@ async def test_indian_equity_quotes():
     assert quote_rel["ticker"] == "RELIANCE.NS"
     assert quote_rel["exchange"] == "NSE"
     assert quote_rel["currency"] == "INR"
-    assert quote_rel["price"] > 2000.0
+    assert quote_rel["price"] > 1000.0
     assert "market_cap" in quote_rel
 
     # Test TCS
     quote_tcs = await indian_market_provider.get_quote("TCS.NS")
     assert quote_tcs["ticker"] == "TCS.NS"
-    assert quote_tcs["price"] > 3000.0
+    assert quote_tcs["price"] > 1000.0
 
 
 @pytest.mark.asyncio

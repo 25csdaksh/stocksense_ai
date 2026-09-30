@@ -12,8 +12,11 @@ def validate_ticker(ticker: str) -> str:
     if not ticker or not isinstance(ticker, str):
         raise ValidationException("Stock ticker symbol cannot be empty.")
     clean = ticker.strip().upper()
-    if not re.match(r"^[A-Z0-9\.\-\^]{1,10}$", clean):
+    if not re.match(r"^[A-Z0-9\.\-\^:\s]{1,25}$", clean):
         raise ValidationException(f"Invalid ticker format: '{clean}'")
+    # Bare symbol without market delimiters (. : ^ space) must not exceed 10 characters
+    if not any(c in clean for c in [".", ":", "^", " "]) and len(clean) > 10:
+        raise ValidationException(f"Invalid ticker format: '{clean}' (bare symbol exceeds 10 characters)")
     return clean
 
 

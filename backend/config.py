@@ -47,10 +47,26 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = Field(default="", env="GEMINI_API_KEY")
     GEMINI_MODEL: str = Field(default="gemini-1.5-pro", env="GEMINI_MODEL")
 
-    # Financial Data APIs
+    # Financial Data APIs & Market Providers (Phase 6)
+    DEFAULT_MARKET_PROVIDER: str = Field(default="auto", env="DEFAULT_MARKET_PROVIDER")
+    MARKET_DATA_PROVIDER: str = Field(default="auto", env="MARKET_DATA_PROVIDER")
+    INDIA_MARKET_PROVIDER: str = Field(default="indian", env="INDIA_MARKET_PROVIDER")
+    US_MARKET_PROVIDER: str = Field(default="yfinance", env="US_MARKET_PROVIDER")
     ALPHA_VANTAGE_API_KEY: str = Field(default="", env="ALPHA_VANTAGE_API_KEY")
     FINNHUB_API_KEY: str = Field(default="", env="FINNHUB_API_KEY")
     POLYGON_API_KEY: str = Field(default="", env="POLYGON_API_KEY")
+
+    # Indian Broker Credentials (Optional / Future Licensed Integrations)
+    ZERODHA_API_KEY: str = Field(default="", env="ZERODHA_API_KEY")
+    ZERODHA_API_SECRET: str = Field(default="", env="ZERODHA_API_SECRET")
+    ZERODHA_ACCESS_TOKEN: str = Field(default="", env="ZERODHA_ACCESS_TOKEN")
+    UPSTOX_API_KEY: str = Field(default="", env="UPSTOX_API_KEY")
+    UPSTOX_API_SECRET: str = Field(default="", env="UPSTOX_API_SECRET")
+    UPSTOX_ACCESS_TOKEN: str = Field(default="", env="UPSTOX_ACCESS_TOKEN")
+    ANGEL_API_KEY: str = Field(default="", env="ANGEL_API_KEY")
+    ANGEL_CLIENT_ID: str = Field(default="", env="ANGEL_CLIENT_ID")
+    ANGEL_PASSWORD: str = Field(default="", env="ANGEL_PASSWORD")
+    ANGEL_TOTP: str = Field(default="", env="ANGEL_TOTP")
 
     # Observability
     LANGFUSE_PUBLIC_KEY: str = Field(default="", env="LANGFUSE_PUBLIC_KEY")

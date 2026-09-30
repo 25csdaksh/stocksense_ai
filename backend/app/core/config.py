@@ -44,10 +44,26 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-1.5-pro"
 
-    # Financial Data Providers
-    DEFAULT_MARKET_PROVIDER: str = "yfinance"
+    # Financial Data Providers & Broker Integration Settings (Phase 6)
+    DEFAULT_MARKET_PROVIDER: str = "auto"
+    MARKET_DATA_PROVIDER: str = "auto"
+    INDIA_MARKET_PROVIDER: str = "indian"
+    US_MARKET_PROVIDER: str = "yfinance"
     ALPHA_VANTAGE_API_KEY: str = ""
     FINNHUB_API_KEY: str = ""
+    POLYGON_API_KEY: str = ""
+
+    # Indian Broker Credentials (Optional / Future Licensed Integrations)
+    ZERODHA_API_KEY: str = ""
+    ZERODHA_API_SECRET: str = ""
+    ZERODHA_ACCESS_TOKEN: str = ""
+    UPSTOX_API_KEY: str = ""
+    UPSTOX_API_SECRET: str = ""
+    UPSTOX_ACCESS_TOKEN: str = ""
+    ANGEL_API_KEY: str = ""
+    ANGEL_CLIENT_ID: str = ""
+    ANGEL_PASSWORD: str = ""
+    ANGEL_TOTP: str = ""
 
     # Caching & Redis
     REDIS_HOST: str = "localhost"
