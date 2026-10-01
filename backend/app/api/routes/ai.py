@@ -1,5 +1,6 @@
 """
 AI Multi-Agent Intelligence & Real-Time SSE Streaming Routes with Database Logging.
+Phase 6.9: Unified AI research endpoints supporting multi-specialist planning, evidence synthesis, and streaming.
 """
 from typing import Optional, Dict, Any
 from fastapi import APIRouter, Query, Depends
@@ -21,13 +22,18 @@ async def analyze_with_multi_agent(
     db: AsyncSession = Depends(get_db_session),
     current_user: Optional[Dict[str, Any]] = Depends(get_optional_user)
 ):
-    """Executes the complete multi-agent LangGraph workflow and logs query execution history to database."""
+    """Executes the complete multi-agent research workflow and logs query execution history to database."""
     session_id = req.session_id or "default_session"
-    result = await ai_service.execute_query(query=req.query, session_id=session_id)
+    user_id = current_user["id"] if current_user else None
+    result = await ai_service.execute_query(
+        query=req.query,
+        session_id=session_id,
+        depth=req.depth,
+        user_id=user_id
+    )
 
     # Persist query execution record to DB
     try:
-        user_id = current_user["id"] if current_user else None
         ai_repo = AIQueryRepository(db)
         # Store only sanitized public thought steps and execution metadata
         clean_steps = [
@@ -56,11 +62,35 @@ async def analyze_with_multi_agent(
 @router.get("/stream")
 async def stream_agent_execution(
     query: str = Query(..., min_length=2, description="User financial question or scenario prompt"),
-    session_id: str = Query(default="default_session", description="Session identifier for state tracking")
+    session_id: str = Query(default="default_session", description="Session identifier for state tracking"),
+    depth: Optional[str] = Query(default="STANDARD", description="Research depth: QUICK, STANDARD, DEEP")
 ):
-    """Streams real-time multi-agent reasoning thoughts, tool invocations, UI widgets, and tokens over Server-Sent Events (SSE)."""
+    """Streams real-time multi-agent research thoughts, specialist tasks, and report synthesis over SSE."""
     return StreamingResponse(
-        ai_service.stream_query(query=query, session_id=session_id),
+        ai_service.stream_query(query=query, session_id=session_id, depth=depth),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
+
+
+@router.post("/query/stream")
+async def post_stream_agent_execution(
+    req: AgentQueryRequest,
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_user)
+):
+    """POST endpoint for streaming research lifecycle events over Server-Sent Events (SSE)."""
+    user_id = current_user["id"] if current_user else None
+    return StreamingResponse(
+        ai_service.stream_query(
+            query=req.query,
+            session_id=req.session_id or "default_session",
+            depth=req.depth,
+            user_id=user_id
+        ),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

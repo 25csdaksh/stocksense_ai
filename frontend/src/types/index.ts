@@ -932,3 +932,120 @@ export interface PipelineNode {
   detail?: string;
 }
 
+// Phase 6.9 — Advanced AI Multi-Agent Research Types
+export type ResearchDepth = "QUICK" | "STANDARD" | "DEEP";
+
+export type ConfidenceLevel = "HIGH" | "MEDIUM" | "LOW" | "INSUFFICIENT";
+
+export type EvidenceProvenance = "LIVE" | "DEMO" | "STALE" | "UNAVAILABLE" | "CALCULATED" | "MODEL_DERIVED";
+
+export interface ResearchTask {
+  task_id: string;
+  agent: string;
+  objective: string;
+  status: "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "SKIPPED";
+  started_at?: string;
+  completed_at?: string;
+  error?: string;
+}
+
+export interface ResearchPlan {
+  query: string;
+  intent: string;
+  symbols: string[];
+  date_range?: string;
+  requested_metrics?: string[];
+  selected_agents: string[];
+  required_tools: string[];
+  research_depth: ResearchDepth;
+  tasks: ResearchTask[];
+  created_at: string;
+}
+
+export interface ResearchCitation {
+  citation_id: string;
+  source_type: string;
+  source_name: string;
+  source_url?: string;
+  published_at?: string;
+  retrieved_at: string;
+  document_id?: string;
+  chunk_id?: string;
+  excerpt?: string;
+}
+
+export interface ResearchEvidenceItem {
+  evidence_id: string;
+  category: string;
+  symbol?: string;
+  metric: string;
+  value: any;
+  source: string;
+  timestamp: string;
+  provenance: EvidenceProvenance;
+  confidence: number;
+  citation?: ResearchCitation;
+  metadata?: Record<string, any>;
+}
+
+export interface EvidenceConflict {
+  conflict_id: string;
+  metric: string;
+  symbols: string[];
+  conflicting_values: Array<{ source: string; value: any; timestamp?: string }>;
+  resolution: string;
+  impact: string;
+}
+
+export interface CrossValidationReport {
+  is_valid: boolean;
+  total_evidence_count: number;
+  conflicts_detected: EvidenceConflict[];
+  stale_items_count: number;
+  missing_fields: string[];
+  provenance_breakdown: Record<string, number>;
+  confidence_level: ConfidenceLevel;
+  confidence_rationale: string;
+}
+
+export interface ResearchReport {
+  report_id: string;
+  query: string;
+  generated_at: string;
+  symbols: string[];
+  time_range?: string;
+  intent: string;
+  research_depth: ResearchDepth;
+  executive_summary: string;
+  market_context?: string;
+  fundamental_analysis?: string;
+  technical_analysis?: string;
+  news_analysis?: string;
+  risk_analysis?: string;
+  anomaly_analysis?: string;
+  scenario_analysis?: string;
+  comparison_analysis?: string;
+  evidence_conflicts: EvidenceConflict[];
+  unknowns: string[];
+  research_conclusion: string;
+  confidence_level: ConfidenceLevel;
+  confidence_rationale: string;
+  provenance_summary: Record<string, string>;
+  citations: ResearchCitation[];
+  limitations: string[];
+}
+
+export interface ResearchExecutionSummary {
+  duration_ms: number;
+  total_evidence_collected: number;
+  agents_executed: string[];
+  validation_report: CrossValidationReport;
+  evidence_graph: {
+    nodes: any[];
+    edges: any[];
+    total_nodes: number;
+    total_edges: number;
+  };
+}
+
+
