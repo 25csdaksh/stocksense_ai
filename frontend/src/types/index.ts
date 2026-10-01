@@ -1048,4 +1048,7 @@ export interface ResearchExecutionSummary {
   };
 }
 
+export * from "./portfolio-copilot";
+
+
 

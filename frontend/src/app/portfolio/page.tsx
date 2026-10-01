@@ -231,8 +231,10 @@ export default function PortfolioPage() {
               onAddTransaction={() => setIsTxFormOpen(true)}
             />
 
-            {/* L. Ask MarketMind About This Portfolio (AI Terminal) */}
-            <AIPortfolioResearch portfolio={portfolio} />
+            {/* L. AI Portfolio Copilot & Personal Research Memory Workstation */}
+            <div id="ai-portfolio-research" className="pt-4">
+              <PortfolioCopilotPanel />
+            </div>
           </>
         )}
 

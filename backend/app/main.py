@@ -33,8 +33,10 @@ from app.api.routes import (
     data_quality,
     providers,
     observability,
+    portfolio_copilot,
 )
 from app.services.websocket_manager import websocket_manager
+
 
 
 @asynccontextmanager
@@ -92,8 +94,10 @@ api_v1_router.include_router(websocket.router)
 api_v1_router.include_router(data_quality.router)
 api_v1_router.include_router(providers.router)
 api_v1_router.include_router(observability.router)
+api_v1_router.include_router(portfolio_copilot.router)
 
 # Mount Routers
+
 app.include_router(api_v1_router)
 app.include_router(health.router)  # Also expose /health and /ready at root
 

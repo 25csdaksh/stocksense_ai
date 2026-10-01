@@ -13,6 +13,7 @@ from app.db.models.scenario import ScenarioReport
 from app.db.models.portfolio import Portfolio, Position, Transaction, Watchlist
 from app.db.models.ai import ChatSession, AIQuery
 from app.db.models.research import ResearchDocument, ResearchChunk
+from app.db.models.research_memory import UserResearchMemory, PortfolioAlert, AlertRule, AlertEvent
 
 __all__ = [
     "Base",
@@ -35,4 +36,9 @@ __all__ = [
     "AIQuery",
     "ResearchDocument",
     "ResearchChunk",
+    "UserResearchMemory",
+    "PortfolioAlert",
+    "AlertRule",
+    "AlertEvent",
 ]
+
