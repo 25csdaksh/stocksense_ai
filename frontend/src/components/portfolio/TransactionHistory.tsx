@@ -150,7 +150,7 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
                     <tr key={tx.id} className="hover:bg-surface-subtle/60 transition-colors">
                       {/* Date & Time */}
                       <td className="p-3.5 pl-4 text-content font-medium whitespace-nowrap">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5" suppressHydrationWarning>
                           <span>{dateStr}</span>
                           <span className="text-[10px] text-content-muted">{timeStr}</span>
                         </div>

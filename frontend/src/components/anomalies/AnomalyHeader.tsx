@@ -63,7 +63,7 @@ export const AnomalyHeader: React.FC<AnomalyHeaderProps> = ({
               )}
             </div>
             <div className="flex flex-wrap items-center gap-3 text-xs text-content-muted mt-1">
-              <span className="flex items-center gap-1">
+              <span className="flex items-center gap-1" suppressHydrationWarning>
                 <Clock className="w-3.5 h-3.5" />
                 Updated at {formattedTime}
               </span>

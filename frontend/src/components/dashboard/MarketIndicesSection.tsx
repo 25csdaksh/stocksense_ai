@@ -51,7 +51,7 @@ export const MarketIndicesSection: React.FC = () => {
 
         <div className="flex items-center gap-2 text-xs text-content-muted">
           {lastUpdated && (
-            <span>Updated {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
+            <span suppressHydrationWarning>Updated {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
           )}
 
           <Button
