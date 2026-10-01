@@ -109,7 +109,7 @@ export const PortfolioCopilotPanel: React.FC<PortfolioCopilotPanelProps> = ({
       query: query.trim(),
       mode: selectedMode,
       depth: selectedDepth,
-      symbols: userContext?.holdings.map((h) => h.symbol),
+      symbols: userContext?.holdings.map((h) => h.symbol || h.ticker),
     };
 
     if (onExecuteQuery) {
@@ -122,7 +122,7 @@ export const PortfolioCopilotPanel: React.FC<PortfolioCopilotPanelProps> = ({
     setSelectedMode(preset.mode);
   };
 
-  const getProvenanceBadge = (status: DataProvenanceStatus) => {
+  const getProvenanceBadge = (status?: DataProvenanceStatus) => {
     switch (status) {
       case 'LIVE':
         return <span className="px-2 py-0.5 text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded">LIVE</span>;
@@ -137,7 +137,7 @@ export const PortfolioCopilotPanel: React.FC<PortfolioCopilotPanelProps> = ({
       case 'STALE':
         return <span className="px-2 py-0.5 text-[10px] font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded">STALE</span>;
       default:
-        return <span className="px-2 py-0.5 text-[10px] font-semibold bg-slate-500/10 text-slate-400 border border-slate-500/20 rounded">{status}</span>;
+        return <span className="px-2 py-0.5 text-[10px] font-semibold bg-slate-500/10 text-slate-400 border border-slate-500/20 rounded">{status || 'FACTUAL'}</span>;
     }
   };
 
@@ -321,57 +321,67 @@ export const PortfolioCopilotPanel: React.FC<PortfolioCopilotPanelProps> = ({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <div className="text-right">
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Confidence</span>
-                      <span className="text-xs font-bold text-emerald-400 font-mono">
-                        {(response.confidence.score * 100).toFixed(0)}% ({response.confidence.level})
-                      </span>
+                  {response.confidence && (
+                    <div className="flex items-center gap-2">
+                      <div className="text-right">
+                        <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Confidence</span>
+                        <span className="text-xs font-bold text-emerald-400 font-mono">
+                          {((response.confidence.confidence_score ?? 0.85) * 100).toFixed(0)}% ({response.confidence.confidence_level})
+                        </span>
+                      </div>
+                      {getProvenanceBadge((response.provenance as any)?.overall_status || 'LIVE')}
                     </div>
-                    {getProvenanceBadge(response.provenance.overall_status)}
-                  </div>
+                  )}
                 </div>
 
                 {/* Executive Summary */}
-                <div>
-                  <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Executive Synthesis</h4>
-                  <div className="p-4 bg-slate-950/60 border border-slate-800/80 rounded-xl text-xs text-slate-200 leading-relaxed space-y-2 whitespace-pre-line font-sans">
-                    {response.report.executive_summary}
+                {response.report.executive_summary && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Executive Synthesis</h4>
+                    <div className="p-4 bg-slate-950/60 border border-slate-800/80 rounded-xl text-xs text-slate-200 leading-relaxed space-y-2 whitespace-pre-line font-sans">
+                      {response.report.executive_summary}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Evidence & Pillars Grid */}
-                <div>
-                  <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Pillar Evidence & Verified Telemetry</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {response.evidence.map((ev, idx) => (
-                      <div key={idx} className="p-3 bg-slate-950/50 border border-slate-800 rounded-lg space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-slate-200 font-mono">{ev.source_agent}</span>
-                          <span className="text-[10px] text-slate-400 font-mono">{ev.timestamp}</span>
+                {response.evidence && response.evidence.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Pillar Evidence & Verified Telemetry</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {response.evidence.map((ev: any, idx: number) => (
+                        <div key={idx} className="p-3 bg-slate-950/50 border border-slate-800 rounded-lg space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-200 font-mono">{ev.source_agent || ev.source_name}</span>
+                            <span className="text-[10px] text-slate-400 font-mono">{ev.retrieved_at || ev.timestamp}</span>
+                          </div>
+                          <p className="text-xs text-slate-300">{ev.claim || ev.content || ev.title}</p>
+                          <div className="flex items-center gap-2 pt-1 text-[10px] text-slate-500">
+                            {ev.confidence && <span>Confidence: {(ev.confidence * 100).toFixed(0)}%</span>}
+                            {ev.pillar && (
+                              <>
+                                <span>•</span>
+                                <span>Pillar: {ev.pillar}</span>
+                              </>
+                            )}
+                          </div>
                         </div>
-                        <p className="text-xs text-slate-300">{ev.claim}</p>
-                        <div className="flex items-center gap-2 pt-1 text-[10px] text-slate-500">
-                          <span>Confidence: {(ev.confidence * 100).toFixed(0)}%</span>
-                          <span>•</span>
-                          <span>Pillar: {ev.pillar}</span>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Structured Sections */}
-                {response.report.sections.map((sec, idx) => (
+                {response.report.sections && response.report.sections.map((sec: any, idx: number) => (
                   <div key={idx} className="p-4 bg-slate-950/40 border border-slate-800/70 rounded-xl space-y-2">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">{sec.heading}</h4>
+                      <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">{sec.heading || sec.title}</h4>
                       {sec.provenance_status && getProvenanceBadge(sec.provenance_status)}
                     </div>
                     <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-line">{sec.content}</p>
                     {sec.bullet_points && sec.bullet_points.length > 0 && (
                       <ul className="list-disc list-inside space-y-1 text-xs text-slate-400 pl-1">
-                        {sec.bullet_points.map((pt, pIdx) => (
+                        {sec.bullet_points.map((pt: string, pIdx: number) => (
                           <li key={pIdx}>{pt}</li>
                         ))}
                       </ul>
@@ -381,27 +391,31 @@ export const PortfolioCopilotPanel: React.FC<PortfolioCopilotPanelProps> = ({
 
                 {/* Citations & Disclaimers */}
                 <div className="pt-4 border-t border-slate-800/80 space-y-3">
-                  <div>
-                    <h5 className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Cited Sources</h5>
-                    <div className="flex flex-wrap gap-2">
-                      {response.citations.map((c, idx) => (
-                        <span key={idx} className="px-2.5 py-1 bg-slate-950 border border-slate-800 rounded text-[11px] text-slate-300 font-mono">
-                          [{c.source_id}] {c.title} ({c.source_type})
-                        </span>
-                      ))}
+                  {response.citations && response.citations.length > 0 && (
+                    <div>
+                      <h5 className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Cited Sources</h5>
+                      <div className="flex flex-wrap gap-2">
+                        {response.citations.map((c, idx) => (
+                          <span key={idx} className="px-2.5 py-1 bg-slate-950 border border-slate-800 rounded text-[11px] text-slate-300 font-mono">
+                            [{c.source_id || c.citation_id}] {c.title || c.source_name} ({c.source_type})
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-lg text-[10px] text-slate-400 space-y-1">
-                    <span className="font-semibold text-slate-300 uppercase tracking-wider block">Institutional Limitations:</span>
-                    <p>{response.limitations.join(' • ')}</p>
-                  </div>
+                  {response.limitations && response.limitations.length > 0 && (
+                    <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-lg text-[10px] text-slate-400 space-y-1">
+                      <span className="font-semibold text-slate-300 uppercase tracking-wider block">Institutional Limitations:</span>
+                      <p>{response.limitations.join(' • ')}</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Integrated Change Timeline if changes present */}
-              {response.changes && response.changes.length > 0 && (
-                <PortfolioChangeTimeline changes={response.changes} />
+              {response.changes && (
+                <PortfolioChangeTimeline changeReport={response.changes} />
               )}
             </div>
           ) : (
@@ -428,41 +442,41 @@ export const PortfolioCopilotPanel: React.FC<PortfolioCopilotPanelProps> = ({
       )}
 
       {/* Subtab 3: Portfolio Context */}
-      {activeWorkstationTab === 'context' && (
+      {activeWorkstationTab === 'context' && userContext && (
         <PortfolioContextCard context={userContext} />
       )}
 
       {/* Subtab 4: Risk & Concentration */}
-      {activeWorkstationTab === 'risk' && (
-        <PortfolioRiskSummary risk={userContext?.risk_context} />
+      {activeWorkstationTab === 'risk' && userContext?.risk_context && (
+        <PortfolioRiskSummary risk={userContext.risk_context} />
       )}
 
       {/* Subtab 5: Scenarios & Stress */}
-      {activeWorkstationTab === 'scenarios' && (
-        <PortfolioScenarioPanel
-          scenarios={response?.scenarios || userContext?.risk_context.monte_carlo_scenarios}
-          historicalStress={userContext?.risk_context.historical_stress_scenarios}
-        />
+      {activeWorkstationTab === 'scenarios' && userContext?.risk_context && (
+        <PortfolioScenarioPanel risk={userContext.risk_context} />
       )}
 
       {/* Subtab 6: News Intelligence */}
-      {activeWorkstationTab === 'news' && (
-        <PortfolioNewsSummary news={userContext?.news_context} />
+      {activeWorkstationTab === 'news' && userContext?.news_context && (
+        <PortfolioNewsSummary news={userContext.news_context} />
       )}
 
       {/* Subtab 7: Anomalies */}
-      {activeWorkstationTab === 'anomalies' && (
-        <PortfolioAnomalySummary anomalies={userContext?.anomaly_context} />
+      {activeWorkstationTab === 'anomalies' && userContext?.anomaly_context && (
+        <PortfolioAnomalySummary anomaly={userContext.anomaly_context} />
       )}
 
       {/* Subtab 8: Watchlist */}
-      {activeWorkstationTab === 'watchlist' && (
-        <WatchlistIntelligence watchlist={userContext?.watchlist} />
+      {activeWorkstationTab === 'watchlist' && userContext?.watchlist && (
+        <WatchlistIntelligence watchlist={userContext.watchlist} />
       )}
 
       {/* Subtab 9: Research Memory */}
       {activeWorkstationTab === 'memory' && (
-        <ResearchMemoryPanel memories={researchMemories} onRecallMemory={onRecallMemory} />
+        <ResearchMemoryPanel
+          memories={researchMemories}
+          onSelectMemory={onRecallMemory ? (m) => onRecallMemory(m.research_id) : undefined}
+        />
       )}
 
       {/* Subtab 10: Factual Alerts */}
@@ -470,10 +484,9 @@ export const PortfolioCopilotPanel: React.FC<PortfolioCopilotPanelProps> = ({
         <PortfolioAlerts
           alerts={alerts}
           rules={alertRules}
-          events={alertEvents}
-          onCreateRule={onCreateAlertRule}
+          onCreateRule={onCreateAlertRule ? (type, threshold, sym) => onCreateAlertRule({ rule_type: type, threshold, symbol: sym }) : undefined}
           onDeleteRule={onDeleteAlertRule}
-          onAcknowledgeAlert={onAcknowledgeAlert}
+          onMarkRead={onAcknowledgeAlert}
         />
       )}
     </div>

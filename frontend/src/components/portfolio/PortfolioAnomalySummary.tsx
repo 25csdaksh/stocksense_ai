@@ -2,7 +2,7 @@
 
 import React from "react";
 import { PortfolioAnomalyContext } from "@/types/portfolio-copilot";
-import { Zap, AlertTriangle, CheckCircle } from "lucide-react";
+import { Zap, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 interface PortfolioAnomalySummaryProps {
   anomaly: PortfolioAnomalyContext;
@@ -38,7 +38,7 @@ export const PortfolioAnomalySummary: React.FC<PortfolioAnomalySummaryProps> = (
           {hasAnomalies ? (
             <AlertTriangle className="w-4 h-4 text-financial-warning flex-shrink-0 mt-0.5" />
           ) : (
-            <CheckCircle className="w-4 h-4 text-financial-gain flex-shrink-0 mt-0.5" />
+            <CheckCircle2 className="w-4 h-4 text-financial-gain flex-shrink-0 mt-0.5" />
           )}
           <p className="leading-relaxed">{anomaly.associative_summary}</p>
         </div>

@@ -14,8 +14,38 @@ export type PortfolioCopilotMode =
   | "WEEKLY_REVIEW"
   | "DAILY_BRIEF";
 
+export type CopilotMode = PortfolioCopilotMode;
+
+export type DataProvenanceStatus =
+  | "LIVE"
+  | "CALCULATED"
+  | "MODEL_DERIVED"
+  | "HISTORICAL_SCENARIO"
+  | "DEMO"
+  | "STALE"
+  | string;
+
+export interface ProvenanceItem {
+  source_id?: string;
+  source_type: string;
+  source_name: string;
+  retrieved_at: string;
+  data_status?: string;
+  confidence?: number;
+  title?: string;
+}
+
+export interface PortfolioCopilotRequest {
+  query: string;
+  mode?: PortfolioCopilotMode;
+  depth?: "FAST" | "STANDARD" | "DEEP";
+  symbols?: string[];
+  session_id?: string;
+}
+
 export interface PortfolioHoldingContext {
   ticker: string;
+  symbol?: string;
   exchange: string;
   quantity: number;
   average_cost: number;
@@ -70,6 +100,10 @@ export interface PortfolioUserContext {
   tracking_error_pct: number;
   provenance: string;
   data_status: string;
+  risk_context?: PortfolioRiskContext | null;
+  news_context?: PortfolioNewsContext | null;
+  anomaly_context?: PortfolioAnomalyContext | null;
+  watchlist?: WatchlistContext | null;
 }
 
 export interface WatchlistItemContext {
@@ -281,15 +315,38 @@ export interface PortfolioCopilotResponse {
     anomalies?: string;
     changes_and_alerts?: string;
     conclusion?: string;
+    sections?: Array<{
+      heading?: string;
+      title?: string;
+      content?: string;
+      bullet_points?: string[];
+      key_takeaways?: string[];
+    }>;
   };
   changes?: PortfolioChangeReport | null;
   risks?: PortfolioRiskContext | null;
   scenarios?: Record<string, any> | null;
+  confidence?: {
+    confidence_level: string;
+    confidence_score: number;
+    rationale?: string;
+  };
+  evidence?: Array<{
+    citation_id: string;
+    source_type: string;
+    source_name: string;
+    retrieved_at: string;
+    title?: string;
+    source_id?: string;
+    content?: string;
+  }>;
   citations: Array<{
     citation_id: string;
     source_type: string;
     source_name: string;
     retrieved_at: string;
+    title?: string;
+    source_id?: string;
   }>;
   provenance: Record<string, string>;
   limitations: string[];
@@ -298,3 +355,8 @@ export interface PortfolioCopilotResponse {
   answer?: string;
   thought_steps?: Array<{ step: number; agent: string; message: string }>;
 }
+
+export type UserResearchMemory = ResearchMemoryItem;
+export type AlertRule = PortfolioAlertRule;
+export type AlertEvent = PortfolioAlertEvent;
+export type PortfolioAlert = PortfolioAlertEvent;
