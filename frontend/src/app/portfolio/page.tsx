@@ -18,6 +18,7 @@ import {
   TransactionForm,
   AIPortfolioResearch,
   PortfolioStressTestCTA,
+  PortfolioCopilotPanel,
 } from "@/components/portfolio";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/common/Card";
 import { Skeleton } from "@/components/common/Skeleton";
@@ -94,6 +95,16 @@ export default function PortfolioPage() {
 
   const tickersList = useMemo(() => {
     return holdings.map((h) => h.ticker);
+  }, [holdings]);
+
+  const stressHoldings = useMemo(() => {
+    return holdings.map((h) => ({
+      ticker: h.ticker,
+      shares: h.shares,
+      price: h.current_price,
+      sector: h.sector,
+      beta: h.beta,
+    }));
   }, [holdings]);
 
   // If initial load failed with no data
@@ -216,13 +227,7 @@ export default function PortfolioPage() {
             {/* J. Historical Crisis Stress Testing Entry */}
             <PortfolioStressTestCTA
               portfolioId="PORT-IN-001"
-              holdings={holdings.map((h) => ({
-                ticker: h.ticker,
-                shares: h.shares,
-                price: h.current_price,
-                sector: h.sector,
-                beta: h.beta,
-              }))}
+              holdings={stressHoldings}
             />
 
             {/* K. Transaction History Ledger */}

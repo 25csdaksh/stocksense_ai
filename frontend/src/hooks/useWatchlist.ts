@@ -76,11 +76,12 @@ export function useWatchlist() {
   const subscribedSymbolsRef = useRef<Set<string>>(new Set());
 
   // Listen to realtime quotes store
-  const realtimeQuotes = useSyncExternalStore(
+  const storeState = useSyncExternalStore(
     marketStore.subscribe,
-    () => marketStore.getSnapshot().quotes,
-    () => marketStore.getSnapshot().quotes
+    marketStore.getSnapshot,
+    marketStore.getSnapshot
   );
+  const realtimeQuotes = storeState.quotes;
 
   const fetchWatchlist = useCallback(async () => {
     setIsLoading(true);
@@ -130,13 +131,15 @@ export function useWatchlist() {
       }
     });
 
-    // Unsubscribe removed tickers
+    // Unsubscribe removed tickers safely without in-iteration mutation
+    const toRemove: string[] = [];
     subscribedSymbolsRef.current.forEach((sym) => {
       if (!currentTickers.has(sym)) {
         unsubscribeSymbol(sym);
-        subscribedSymbolsRef.current.delete(sym);
+        toRemove.push(sym);
       }
     });
+    toRemove.forEach((sym) => subscribedSymbolsRef.current.delete(sym));
   }, [baseWatchlist, subscribeSymbol, unsubscribeSymbol]);
 
   // Cleanup all subscriptions on unmount

@@ -21,6 +21,8 @@ export function usePortfolioCorrelation(portfolioTickers: string[] = ["RELIANCE.
   const [isError, setIsError] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  const tickersKey = useMemo(() => (portfolioTickers || []).join(","), [portfolioTickers]);
+
   const fetchCorrelations = useCallback(async () => {
     setIsLoading(true);
     setIsError(false);
@@ -41,7 +43,8 @@ export function usePortfolioCorrelation(portfolioTickers: string[] = ["RELIANCE.
     } finally {
       setIsLoading(false);
     }
-  }, [method, portfolioTickers]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [method, tickersKey]);
 
   useEffect(() => {
     fetchCorrelations();

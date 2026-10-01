@@ -13,6 +13,7 @@ import React, {
   useRef,
   useState,
   useCallback,
+  useMemo,
 } from "react";
 import {
   WebSocketConnectionState,
@@ -344,19 +345,33 @@ export function MarketWebSocketProvider({ children }: { children: React.ReactNod
     }
   }, [user, sendJson]);
 
-  const value: MarketWebSocketContextType = {
-    status: connectionStatus,
-    dataStatus: connectionState.dataStatus,
-    dataSource: connectionState.dataSource,
-    connected: connectionStatus === "CONNECTED",
-    lastEventAt: connectionState.lastEventAt,
-    isStale: connectionState.isStale,
-    subscribeSymbol,
-    unsubscribeSymbol,
-    subscribeChannel,
-    unsubscribeChannel,
-    reconnect: manualReconnect,
-  };
+  const value: MarketWebSocketContextType = useMemo(
+    () => ({
+      status: connectionStatus,
+      dataStatus: connectionState.dataStatus,
+      dataSource: connectionState.dataSource,
+      connected: connectionStatus === "CONNECTED",
+      lastEventAt: connectionState.lastEventAt,
+      isStale: connectionState.isStale,
+      subscribeSymbol,
+      unsubscribeSymbol,
+      subscribeChannel,
+      unsubscribeChannel,
+      reconnect: manualReconnect,
+    }),
+    [
+      connectionStatus,
+      connectionState.dataStatus,
+      connectionState.dataSource,
+      connectionState.lastEventAt,
+      connectionState.isStale,
+      subscribeSymbol,
+      unsubscribeSymbol,
+      subscribeChannel,
+      unsubscribeChannel,
+      manualReconnect,
+    ]
+  );
 
   return (
     <MarketWebSocketContext.Provider value={value}>

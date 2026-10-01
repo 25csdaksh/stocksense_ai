@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore, useCallback } from "react";
+import { useSyncExternalStore, useMemo } from "react";
 import { marketStore } from "../lib/realtime/marketStore";
 import { normalizeSymbol } from "../lib/realtime/symbolNormalizer";
 import type {
@@ -15,11 +15,12 @@ import type {
  */
 export function useRealtimeQuote(rawSymbol: string): RealtimeQuote | undefined {
   const canonical = normalizeSymbol(rawSymbol);
-  const selector = useCallback(
-    () => marketStore.getSnapshot().quotes[canonical],
-    [canonical]
+  const storeState = useSyncExternalStore(
+    marketStore.subscribe,
+    marketStore.getSnapshot,
+    marketStore.getSnapshot
   );
-  return useSyncExternalStore(marketStore.subscribe, selector, selector);
+  return storeState.quotes[canonical];
 }
 
 /**
@@ -27,30 +28,39 @@ export function useRealtimeQuote(rawSymbol: string): RealtimeQuote | undefined {
  */
 export function useRealtimeIndex(rawSymbol: string): RealtimeIndex | undefined {
   const canonical = normalizeSymbol(rawSymbol);
-  const selector = useCallback(
-    () => marketStore.getSnapshot().indices[canonical],
-    [canonical]
+  const storeState = useSyncExternalStore(
+    marketStore.subscribe,
+    marketStore.getSnapshot,
+    marketStore.getSnapshot
   );
-  return useSyncExternalStore(marketStore.subscribe, selector, selector);
+  return storeState.indices[canonical];
 }
 
 /**
  * React hook to select all real-time benchmark indices.
  */
 export function useRealtimeIndices(): Record<string, RealtimeIndex> {
-  const selector = useCallback(() => marketStore.getSnapshot().indices, []);
-  return useSyncExternalStore(marketStore.subscribe, selector, selector);
+  const storeState = useSyncExternalStore(
+    marketStore.subscribe,
+    marketStore.getSnapshot,
+    marketStore.getSnapshot
+  );
+  return storeState.indices;
 }
 
 /**
  * React hook to select real-time anomaly alerts stream.
  */
 export function useRealtimeAnomalies(limit: number = 20): RealtimeAnomaly[] {
-  const selector = useCallback(
-    () => marketStore.getSnapshot().anomalies.slice(0, limit),
-    [limit]
+  const storeState = useSyncExternalStore(
+    marketStore.subscribe,
+    marketStore.getSnapshot,
+    marketStore.getSnapshot
   );
-  return useSyncExternalStore(marketStore.subscribe, selector, selector);
+  return useMemo(
+    () => storeState.anomalies.slice(0, limit),
+    [storeState.anomalies, limit]
+  );
 }
 
 /**
@@ -58,32 +68,41 @@ export function useRealtimeAnomalies(limit: number = 20): RealtimeAnomaly[] {
  */
 export function useRealtimeMarketStatus(exchange: string = "NSE"): RealtimeMarketStatus | undefined {
   const exch = exchange.toUpperCase();
-  const selector = useCallback(
-    () => marketStore.getSnapshot().marketStatus[exch],
-    [exch]
+  const storeState = useSyncExternalStore(
+    marketStore.subscribe,
+    marketStore.getSnapshot,
+    marketStore.getSnapshot
   );
-  return useSyncExternalStore(marketStore.subscribe, selector, selector);
+  return storeState.marketStatus[exch];
 }
 
 /**
  * React hook to select connection state and data freshness.
  */
 export function useRealtimeConnectionState() {
-  const selector = useCallback(() => {
-    const snap = marketStore.getSnapshot();
+  const storeState = useSyncExternalStore(
+    marketStore.subscribe,
+    marketStore.getSnapshot,
+    marketStore.getSnapshot
+  );
+
+  return useMemo(() => {
     const isStale =
-      snap.connectionStatus === "CONNECTED" &&
-      snap.lastEventAt !== null &&
-      Date.now() - snap.lastEventAt.getTime() > 60000;
+      storeState.connectionStatus === "CONNECTED" &&
+      storeState.lastEventAt !== null &&
+      Date.now() - storeState.lastEventAt.getTime() > 60000;
 
     return {
-      status: snap.connectionStatus,
-      dataStatus: isStale ? "STALE" : snap.dataStatus,
-      dataSource: snap.dataSource,
-      lastEventAt: snap.lastEventAt,
+      status: storeState.connectionStatus,
+      dataStatus: isStale ? "STALE" : storeState.dataStatus,
+      dataSource: storeState.dataSource,
+      lastEventAt: storeState.lastEventAt,
       isStale,
     };
-  }, []);
-
-  return useSyncExternalStore(marketStore.subscribe, selector, selector);
+  }, [
+    storeState.connectionStatus,
+    storeState.lastEventAt,
+    storeState.dataStatus,
+    storeState.dataSource,
+  ]);
 }

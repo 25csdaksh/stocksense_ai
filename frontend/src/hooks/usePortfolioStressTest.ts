@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { portfolioApi } from "@/lib/api/portfolio";
 import { PortfolioStressTestResponse } from "@/types";
 
@@ -48,6 +48,11 @@ export function usePortfolioStressTest(holdings?: Array<{ ticker: string; shares
   const [isError, setIsError] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  const holdingsKey = useMemo(() => {
+    if (!holdings || holdings.length === 0) return "";
+    return holdings.map((h) => `${h.ticker}:${h.shares}:${h.price}`).join("|");
+  }, [holdings]);
+
   const fetchStressTest = useCallback(async () => {
     setIsLoading(true);
     setIsError(false);
@@ -65,7 +70,8 @@ export function usePortfolioStressTest(holdings?: Array<{ ticker: string; shares
     } finally {
       setIsLoading(false);
     }
-  }, [holdings]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [holdingsKey]);
 
   useEffect(() => {
     fetchStressTest();
